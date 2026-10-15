@@ -55,6 +55,13 @@ Versioning practices:
   Over-long single sentences now hard-split inside monologue chunking.
   `requires-python` corrected to `>=3.11` (`tomllib`); removed dead
   `[tool.unittest]` config; `PROJECT_PLAN.md` no longer mentions `pdfplumber`.
+- Milestone 3 (R2V full-reference): `core/ref_manifest.py` proposes per-chunk
+  Subject/Audio slots (Subject 1 environment, characters in bible order, one
+  voice-timbre `<Audio N>` per speaker; pictures/videos empty placeholders);
+  `core/r2v.py` builds the 6-section template with task-type prefix, valid
+  retention markers, shot lists, and `<Subject N> (Sx)` speaker heads (no IDs in
+  retention); validator checks section order, markers, task-type prefix, and
+  true label definitions (line-start only). 7 new tests, 37 total.
 
 ### Changed
 - Dependency policy: project-local `.venv/` only (git-ignored); zero required

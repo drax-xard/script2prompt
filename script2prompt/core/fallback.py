@@ -33,9 +33,23 @@ def _is_voiceover(extension: str, delivery: str) -> bool:
     return "VOICEOVER" in blob or blob in ("OS", "VO", "OC")
 
 
-def _speaker_head(name: str, char: Character | None, mentioned: set[str]) -> str:
+def _speaker_head(name: str, char: Character | None, mentioned: set[str],
+                  subject_labels: dict[str, str] | None = None) -> str:
     readable = title(name)
     sid = char.speaker_id if char and char.speaker_id else None
+    label = (subject_labels or {}).get(name)
+    if label:
+        # Full-reference form (guide §5.4): <Subject N> (Sx) with an appositive
+        # description on first mention, bare label afterwards.
+        if name not in mentioned:
+            mentioned.add(name)
+            appositive = f", {readable}"
+            if char and char.description:
+                appositive += f", {char.description}"
+            if sid:
+                return f"{label} ({sid}){appositive}"
+            return f"{label}{appositive}"
+        return f"{label} ({sid})" if sid else label
     if char and char.description and name not in mentioned:
         mentioned.add(name)
         base = f"{readable}, {char.description}"
@@ -61,7 +75,8 @@ def _render_dialogue(words: str, head: str, voiceover: bool, mark: str) -> str:
 
 
 def _shot_text(elements: list[Element], speakers: dict[str, Character],
-               mentioned: set[str], opening: str) -> str:
+               mentioned: set[str], opening: str,
+               subject_labels: dict[str, str] | None = None) -> str:
     parts = [opening] if opening else []
     cue: Element | None = None
     delivery = ""
@@ -75,7 +90,7 @@ def _shot_text(elements: list[Element], speakers: dict[str, Character],
             name = cue.meta.get("name", "") if cue else ""
             ext = cue.meta.get("extension", "") if cue else ""
             char = speakers.get(name) if name else None
-            head = _speaker_head(name, char, mentioned) if name else "An unseen speaker"
+            head = _speaker_head(name, char, mentioned, subject_labels) if name else "An unseen speaker"
             parts.append(
                 _render_dialogue(el.text, head, _is_voiceover(ext, delivery), el.meta.get("scenetrans", ""))
             )

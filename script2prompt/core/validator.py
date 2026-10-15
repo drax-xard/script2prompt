@@ -1,20 +1,25 @@
-"""Prompt validator/linter (Milestones 1-2: T2VA + keyframe modes).
+"""Prompt validator/linter (Milestones 1-3: base modes + R2V).
 
-Checks the instruction line for I2VA/FL2VA/L2VA, then the shared rules:
-field presence/order, sequential shots (<=3), timestamp rules ([Shot 1]
-bare; later shots strictly increasing and inside duration), balanced <d>
-tags with language labels, soundscape/music sentence budgets, and the
-7000-character budget. R2V arrives in Milestone 3.
+Checks the instruction line for I2VA/FL2VA/L2VA, the six R2V sections with
+valid retention markers and consistent reference labels, then the shared
+rules: field presence/order, sequential shots (<=3), timestamp rules
+([Shot 1] bare; later shots strictly increasing and inside duration),
+balanced <d> tags with language labels, soundscape/music sentence budgets,
+and the 7000-character budget.
 """
 from __future__ import annotations
 
 import re
 
-from .modes import BASE_FIELDS, instruction_line
+from .modes import BASE_FIELDS, R2V_SECTIONS, instruction_line
 
 CHAR_BUDGET = 7000
 SHOT_STAMP = re.compile(r"\[Shot (\d+)\] At (\d{2}):(\d{2})\.(\d{3})")
 SHOT_ANY = re.compile(r"\[Shot (\d+)\]")
+LABEL_USE = re.compile(r"<(Subject|Picture|Video|Audio) (\d+)>")
+SPEAKER_ID = re.compile(r"\(S\d+(?:,S\d+)*\)")
+VISUAL_MARKERS = frozenset({"fully_preserved", "partially_preserved", "attribute_transfer", "weak_reference"})
+AUDIO_MARKERS = frozenset({"fully_copy", "partially_copy", "reference", "weak_reference"})
 FIELDS = BASE_FIELDS
 
 
@@ -26,7 +31,7 @@ def validate(prompt: str, mode: str = "T2VA", duration: float = 8.0) -> list[str
     """Return a list of issues (empty = valid)."""
     issues: list[str] = []
     if mode == "R2V":
-        return ["R2V validation arrives in Milestone 3"]
+        return _validate_r2v(prompt, duration)
     if mode not in ("T2VA", "I2VA", "FL2VA", "L2VA"):
         return [f"unknown mode: {mode}"]
 
@@ -60,6 +65,18 @@ def validate(prompt: str, mode: str = "T2VA", duration: float = 8.0) -> list[str
     if not found[0] < found[1] < found[2]:
         issues.append("fields out of order")
 
+    issues.extend(_check_shots(body, duration))
+    issues.extend(_check_dialogue(prompt))
+    issues.extend(_check_soundscape(body[found[1] + len(FIELDS[1]) : found[2]].strip()))
+    issues.extend(_check_music(body[found[2] + len(FIELDS[2]) :].strip()))
+
+    if len(prompt) > CHAR_BUDGET:
+        issues.append(f"prompt exceeds {CHAR_BUDGET} characters")
+    return issues
+
+
+def _check_shots(body: str, duration: float) -> list[str]:
+    issues: list[str] = []
     numbers = [int(n) for n in SHOT_ANY.findall(body)]
     if not numbers or numbers[0] != 1:
         issues.append("[Shot 1] must open the description")
@@ -81,24 +98,89 @@ def validate(prompt: str, mode: str = "T2VA", duration: float = 8.0) -> list[str
     for cut in times:
         if not 0 < cut < duration + 1e-9:
             issues.append(f"cut time {cut:.3f}s outside duration {duration:.2f}s")
+    return issues
 
-    if prompt.count("<d>") != prompt.count("</d>"):
+
+def _check_dialogue(text: str) -> list[str]:
+    issues: list[str] = []
+    if text.count("<d>") != text.count("</d>"):
         issues.append("unbalanced <d> tags")
-    for item in re.findall(r"<d>(.*?)</d>", prompt, re.S):
+    for item in re.findall(r"<d>(.*?)</d>", text, re.S):
         if not re.match(r"\[[^\]]+\]", item.strip()):
             issues.append("dialogue tag missing language label")
+    return issues
 
-    soundscape = body[found[1] + len(FIELDS[1]) : found[2]].strip()
-    if soundscape != "N/A":
-        count = len(_sentences(soundscape))
+
+def _check_soundscape(text: str) -> list[str]:
+    issues: list[str] = []
+    if text != "N/A":
+        count = len(_sentences(text))
         if not 1 <= count <= 4:
             issues.append("overall_soundscape must be 1-4 sentences")
-        if "<d>" in soundscape:
+        if "<d>" in text:
             issues.append("overall_soundscape must not contain dialogue")
-    music = body[found[2] + len(FIELDS[2]) :].strip()
-    if music != "N/A" and not 1 <= len(_sentences(music)) <= 3:
-        issues.append("non_diegetic_music must be 1-3 sentences or N/A")
+    return issues
 
+
+def _check_music(text: str) -> list[str]:
+    if text != "N/A" and not 1 <= len(_sentences(text)) <= 3:
+        return ["non_diegetic_music must be 1-3 sentences or N/A"]
+    return []
+
+
+def _section(prompt: str, label: str, following: tuple[str, ...]) -> str:
+    start = prompt.find(label)
+    if start < 0:
+        return ""
+    start += len(label)
+    end = min(
+        ([prompt.find(other, start) for other in following if prompt.find(other, start) >= 0] or [len(prompt)])
+    )
+    return prompt[start:end].strip()
+
+
+def _validate_r2v(prompt: str, duration: float) -> list[str]:
+    issues: list[str] = []
+    found = [prompt.find(section) for section in R2V_SECTIONS]
+    if any(pos < 0 for pos in found):
+        return ["missing required R2V section(s)"]
+    if not all(a < b for a, b in zip(found, found[1:])):
+        issues.append("R2V sections out of order")
+
+    definitions = _section(prompt, "subject_definitions:", R2V_SECTIONS[1:])
+    defined = set()
+    for line in definitions.splitlines():
+        opened = re.match(r"<(Subject|Picture|Video|Audio) (\d+)>", line.strip())
+        if opened:
+            defined.add(f"<{opened.group(1)} {opened.group(2)}>")
+    if not defined:
+        issues.append("subject_definitions defines no reference labels")
+
+    summary = _section(prompt, "summary:", R2V_SECTIONS[2:])
+    if not re.search(r"\[.+\]", summary):
+        issues.append("summary needs a [task-type] prefix")
+
+    retention = _section(prompt, "retention_analysis:", R2V_SECTIONS[3:])
+    for line in [ln.strip() for ln in retention.splitlines() if ln.strip()]:
+        marker = re.search(r":\s*([a-z_]+)\s*-", line)
+        if line.startswith("<Audio"):
+            if not marker or marker.group(1) not in AUDIO_MARKERS:
+                issues.append(f"invalid audio retention marker: {line[:60]}")
+        elif line.startswith("<"):
+            if not marker or marker.group(1) not in VISUAL_MARKERS:
+                issues.append(f"invalid visual retention marker: {line[:60]}")
+    if SPEAKER_ID.search(retention):
+        issues.append("retention_analysis must not contain speaker IDs")
+
+    for kind, num in LABEL_USE.findall(prompt):
+        if f"<{kind} {num}>" not in defined:
+            issues.append(f"undefined reference label: <{kind} {num}>")
+
+    detailed = _section(prompt, "detailed_description:", R2V_SECTIONS[4:])
+    issues.extend(_check_shots(detailed, duration))
+    issues.extend(_check_dialogue(prompt))
+    issues.extend(_check_soundscape(_section(prompt, "overall_soundscape:", R2V_SECTIONS[5:])))
+    issues.extend(_check_music(_section(prompt, "non_diegetic_music:", ())))
     if len(prompt) > CHAR_BUDGET:
         issues.append(f"prompt exceeds {CHAR_BUDGET} characters")
     return issues
