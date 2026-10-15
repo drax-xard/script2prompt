@@ -90,7 +90,10 @@ def build(chunk: dict, bible: list[Character] = (), manifest: dict | None = None
     rendered = []
     for i, shot in enumerate(shots):
         if i == 0:
-            opening = "The scene opens on the scripted location with the referenced subjects in place."
+            opening = (
+                "The scene opens on the scripted location with the referenced "
+                "subjects in place. The camera holds a static shot."
+            )
         else:
             opening = (
                 f"[Shot {i + 1}] At {shot['start']}, the camera cuts to a new "

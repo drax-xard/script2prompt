@@ -66,6 +66,27 @@ class TestR2VBuild(unittest.TestCase):
         retention = prompt.split("retention_analysis:")[1].split("detailed_description:")[0]
         self.assertNotIn("(S1)", retention)
 
+    def test_shot_one_has_camera(self) -> None:
+        bible, chunks = setup()
+        prompt = h3_builder.build(chunks[0], bible, mode="R2V")
+        shot_one = prompt.split("detailed_description:")[1].split("overall_soundscape:")[0]
+        self.assertIn("The camera", shot_one)
+
+    def test_audio_order_is_numeric(self) -> None:
+        from script2prompt.core.characters import Character
+        from script2prompt.core.ref_manifest import propose
+
+        bible = [Character(f"C{i}", f"S{i}", "") for i in range(1, 12)]
+        chunk = {
+            "context": "INT. X - DAY",
+            "shots": [{"elements": [], "start": "00:00.000"}],
+            "speakers": {c.name: c for c in bible},
+            "duration": 5.0,
+            "elements": [],
+        }
+        audios = propose(chunk, bible)["audios"]
+        self.assertEqual([a["speaker_id"] for a in audios], [f"S{i}" for i in range(1, 12)])
+
 
 class TestR2VValidation(unittest.TestCase):
     def test_missing_section(self) -> None:

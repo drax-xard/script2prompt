@@ -62,6 +62,8 @@ Versioning practices:
   retention markers, shot lists, and `<Subject N> (Sx)` speaker heads (no IDs in
   retention); validator checks section order, markers, task-type prefix, and
   true label definitions (line-start only). 7 new tests, 37 total.
+- Audit fixes (R2V): numeric audio ordering (`S10` no longer sorts before `S2`);
+  R2V `[Shot 1]` opening gains its missing camera sentence.
 
 ### Changed
 - Dependency policy: project-local `.venv/` only (git-ignored); zero required

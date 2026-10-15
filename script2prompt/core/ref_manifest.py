@@ -37,6 +37,14 @@ def _fmt_shots(shots: list[int]) -> str:
     )
 
 
+def _speaker_order(char: Character) -> int:
+    """Numeric speaker order (lexicographic sort would put S10 before S2)."""
+    try:
+        return int((char.speaker_id or "")[1:])
+    except ValueError:
+        return 0
+
+
 def propose(chunk: dict, bible: list[Character] = ()) -> dict:
     """Propose reference slots for one chunk's R2V prompt.
 
@@ -78,7 +86,7 @@ def propose(chunk: dict, bible: list[Character] = ()) -> dict:
     audios: list[dict] = []
     for char in sorted(
         (c for c in bible if c.speaker_id and c.name in chunk.get("speakers", {})),
-        key=lambda c: c.speaker_id or "",
+        key=_speaker_order,
     ):
         audios.append(
             {
