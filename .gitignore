@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Streamlit / FastAPI
+.streamlit/secrets.toml
+
+# Local config overrides
+config.local.toml
+
+# Outputs
+out/
+exports/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

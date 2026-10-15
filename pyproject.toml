@@ -1,0 +1,17 @@
+[project]
+name = "script2prompt"
+version = "0.1.0"
+description = "Translate movie scripts/screenplays into Minimax H3 video prompts"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+pdf = ["pypdf>=4.0"]
+web = ["streamlit>=1.30"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.unittest]
+testpaths = ["tests"]

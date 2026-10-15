@@ -1,0 +1,14 @@
+# Script2Prompt defaults (v1: mode is per-project).
+# Override locally via config.local.toml or OPENAI_BASE_URL / S2P_MODEL env vars.
+# Loaded with stdlib tomllib (no pyyaml needed).
+
+[project]
+mode = "T2VA"  # T2VA | I2VA | FL2VA | L2VA | R2V
+duration = 8.0  # target seconds per chunk (cap 10.0)
+shots_max = 3
+style = "Live-action, cinematic"
+
+[llm]
+base_url = "http://localhost:11434/v1"
+model = "local-model"
+temperature = 0.3
