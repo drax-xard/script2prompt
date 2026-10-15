@@ -166,22 +166,22 @@ script2prompt/
 
 ---
 
-## 6. Milestones
+## 6. Milestones (status as of `03fbf0a`, 39 tests green)
 
-1. Offline core: parsers (txt/fountain) + scenes + bible + chunker + T2VA builder/validator + tests.
-2. Mode layer: `modes.py` + I2VA/FL2VA/L2VA instruction lines + body shapes + per-mode validation.
-3. R2V layer: manifest proposer + 6-section builder + retention markers.
-4. LLM wiring: 5 mode system prompts via local OpenAI-compatible endpoint + fallback templates.
-5. Remaining parsers: FDX + PDF.
-6. Web wizard + one sample end-to-end per mode (1-page script → prompts + manifests).
-7. Polish: budget meters, linter warnings, config, docs.
+1. ✅ Offline core: parsers (txt/fountain) + scenes + bible + chunker + T2VA builder/validator + tests. *Done (`35c17c7`).*
+2. ✅ Mode layer: `modes.py` + I2VA/FL2VA/L2VA instruction lines + body shapes + per-mode validation. *Done (`72fedda`).*
+3. ✅ R2V layer: manifest proposer + 6-section builder + retention markers. *Done (`a239b02`, fixes in `03fbf0a`).*
+4. ⬜ LLM wiring: 5 mode system prompts via local OpenAI-compatible endpoint + fallback templates. *Started: stdlib `urllib` client (`core/llm.py:chat`) exists; `rewrite()` prompts pending.*
+5. ⬜ Remaining parsers: FDX + PDF (stubs with lazy-import errors in place).
+6. ⬜ Web wizard + one sample end-to-end per mode (1-page script → prompts + manifests).
+7. ⬜ Polish: budget meters, linter warnings, config, docs.
 
 v2 hooks (no work now): `chunk.mode_override`, image upload/preview, storyboard multi-panel sheets, ComfyUI/API direct submit.
 
 ---
 
-## 7. Open defaults (confirm before/at build start)
+## 7. Open defaults (resolved unless noted)
 
-- Default chunk duration **8s**, style **`Live-action, cinematic`** unless script states otherwise?
-- Local endpoint via `OPENAI_BASE_URL` / `S2P_MODEL` env, mirrored in `config.toml`?
-- Export set: `prompts.md` + `manifest.json` (+ `reference_manifest.json`, `characters.md`) sufficient for v1?
+- ✅ Default chunk duration **8s**, style **`Live-action, cinematic`** unless script states otherwise (in `config.toml`).
+- ✅ Local endpoint via `OPENAI_BASE_URL` / `S2P_MODEL` env, mirrored in `config.toml` (implemented in `core/config.py:load`).
+- ❓ Export set: `prompts.md` + `manifest.json` (+ `reference_manifest.json`, `characters.md`) sufficient for v1? *Still open — decided with the web wizard (Milestone 6).*
