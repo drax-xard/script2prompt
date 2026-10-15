@@ -26,6 +26,22 @@ Versioning practices:
 - `script2prompt/core/config.py`: stdlib `tomllib` loader with `config.local.toml`
   and `OPENAI_BASE_URL` / `S2P_MODEL` env overrides.
 - `script2prompt/core/llm.py`: stdlib `urllib` chat-completions client (no `openai` SDK).
+- Milestone 1 (offline core, T2VA): plain-text heuristic and Fountain-subset parsers
+  (headings, cues with `(O.S.)` extensions, dialogue blocks, parentheticals,
+  transitions); scene splitter with slugline context carry-over; character bible
+  (speaker IDs in first-vocalization order, descriptions from `NAME (traits)`
+  action intros, `None` IDs for non-vocal characters); chunker (duration estimate,
+  greedy pack to target, <=10s, <=3 shots, `MM:SS.mmm` stamps, >30-word monologue
+  split with `<scenetrans>` markers); deterministic T2VA template builder
+  (`core/fallback.py` via `core/h3_builder.py`); T2VA validator (fields, shots,
+  timestamps, `<d>` tags, soundscape/music budgets, 7000-char cap);
+  `core/modes.py` instruction lines for all modes. 22 stdlib `unittest` tests,
+  including end-to-end on `samples/sample_scene.txt`.
+- T2VA template restyled to the real-example layout (`Example_Text2Video_Prompt.txt`):
+  field labels on their own lines, standalone style sentence opening the body,
+  dialogue as `Name (S1) says <d>[Lang]words</d>.` (no colon, no space after the
+  language tag, period outside `</d>`). Conventions recorded in `AGENTS.md` and
+  `PROJECT_PLAN.md` §2.1.
 
 ### Changed
 - Dependency policy: project-local `.venv/` only (git-ignored); zero required

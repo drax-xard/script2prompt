@@ -27,11 +27,23 @@ Official references (local copies, authoritative for prompt shapes):
 ### 2.1 Base modes (T2VA / I2VA / FL2VA / L2VA) — 3 fields + optional instruction line
 
 ```
-[optional instruction line, blank line]
-integrated_multimodal_description: [Shot 1] ...
-overall_soundscape: ...
-non_diegetic_music: ...
+[field label on its own line, body follows — per Example_*_Prompt.txt]
+integrated_multimodal_description:
+Live-action, cinematic.
+[Shot 1] ...
+
+overall_soundscape:
+...
+
+non_diegetic_music:
+N/A
 ```
+
+Layout note: the guides show labels inline (`field: [Shot 1]...`), but the real
+example prompts put each label on its own line with a standalone style sentence
+opening the body. Match the examples. Dialogue form is
+`Name (S1) says <d>[Lang]words</d>.` (no colon, no space after the language tag,
+terminal period outside `</d>`).
 
 | Mode | Use | Instruction line (first line, then one blank line) | Body shape |
 |---|---|---|---|

@@ -1,7 +1,133 @@
-"""Rule-based fallback filler when the LLM is unreachable."""
+"""Rule-based T2VA template filler (offline fallback, Milestone 1).
+
+Deterministic prose from parsed elements: style + context open Shot 1,
+action sentences verbatim, dialogue verbatim inside ``<d>[English] ...</d>``
+with stable speaker IDs from the bible, one camera sentence per shot.
+The LLM rewrite (Milestone 4) will replace this prose, not the structure.
+"""
 from __future__ import annotations
 
+import re
 
-def build(chunk: dict, mode: str = "T2VA") -> str:
-    """Deterministic template prompt. TODO: Milestone 1."""
-    raise NotImplementedError
+from script2prompt.parsers.base import Element
+
+from .characters import Character, title
+from .chunker import split_sentences
+
+
+def _clean(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip())
+
+
+def _finish(sentence: str) -> str:
+    sentence = _clean(sentence)
+    if sentence and sentence[-1] not in ".!?":
+        sentence += "."
+    return sentence
+
+
+def _is_voiceover(extension: str, delivery: str) -> bool:
+    blob = re.sub(r"[^A-Z]", "", f"{extension} {delivery}".upper())
+    return "VOICEOVER" in blob or blob in ("OS", "VO", "OC")
+
+
+def _speaker_head(name: str, char: Character | None, mentioned: set[str]) -> str:
+    readable = title(name)
+    sid = char.speaker_id if char and char.speaker_id else None
+    if char and char.description and name not in mentioned:
+        mentioned.add(name)
+        base = f"{readable}, {char.description}"
+    else:
+        base = readable
+    return f"{base} ({sid})" if sid else base
+
+
+def _render_dialogue(words: str, head: str, voiceover: bool, mark: str) -> str:
+    # Plain form matches Example_Text2Video_Prompt.txt: no colon after "says",
+    # no space after the language tag, terminal period outside </d>.
+    # Voiceover keeps the guide's fixed phrase (with colon).
+    tag = f"<d>[English]{_clean(words)}</d>."
+    if voiceover:
+        line = f"{head} says in an off-screen voiceover: {tag} {head}'s lips remain completely closed."
+    else:
+        line = f"{head} says {tag}"
+    if mark in ("out", "both"):
+        line += " <scenetrans> The line continues seamlessly across the cut."
+    if mark in ("in", "both"):
+        line = f"<scenetrans> The line carries over from the previous shot as {line}"
+    return line
+
+
+def _shot_text(elements: list[Element], speakers: dict[str, Character],
+               mentioned: set[str], opening: str) -> str:
+    parts = [opening] if opening else []
+    cue: Element | None = None
+    delivery = ""
+    for el in elements:
+        if el.kind == "character":
+            cue = el
+            delivery = ""
+        elif el.kind == "parenthetical":
+            delivery = el.text.strip().strip("()").strip()
+        elif el.kind == "dialogue":
+            name = cue.meta.get("name", "") if cue else ""
+            ext = cue.meta.get("extension", "") if cue else ""
+            char = speakers.get(name) if name else None
+            head = _speaker_head(name, char, mentioned) if name else "An unseen speaker"
+            parts.append(
+                _render_dialogue(el.text, head, _is_voiceover(ext, delivery), el.meta.get("scenetrans", ""))
+            )
+            delivery = ""
+        elif el.kind == "action":
+            parts.extend(_finish(s) for s in split_sentences(el.text))
+    return " ".join(parts)
+
+
+def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
+          style: str = "Live-action, cinematic") -> str:
+    """Build a deterministic T2VA prompt for a chunk."""
+    if mode != "T2VA":
+        raise NotImplementedError(f"{mode} builder arrives in Milestones 2-3")
+    speakers = chunk.get("speakers", {})
+    context = _clean(chunk.get("context", ""))
+    shots = chunk.get("shots", [])
+    mentioned: set[str] = set()
+    rendered: list[str] = []
+    for i, shot in enumerate(shots):
+        if i == 0:
+            # Style lives in its own opening sentence (per the real example),
+            # not inline in [Shot 1].
+            opening = "A medium-wide shot frames the scene."
+            if context:
+                opening += f" The scene takes place at {context}."
+            opening += " The camera pushes in with small amplitude at slow speed."
+        else:
+            opening = (
+                f"[Shot {i + 1}] At {shot['start']}, the camera cuts to a new "
+                "angle on the ongoing action. The camera holds a static shot."
+            )
+        body = _shot_text(shot["elements"], speakers, mentioned, opening)
+        rendered.append(body)
+    style_sentence = _finish(style)
+    description = f"{style_sentence}\n[Shot 1] {rendered[0]}" if rendered else f"{style_sentence}\n[Shot 1] ..."
+    for extra in rendered[1:]:
+        description += f"\n{extra}"
+
+    actions = [e.text for e in chunk.get("elements", []) if e.kind == "action"]
+    sentences: list[str] = []
+    for action in actions:
+        sentences.extend(_finish(s) for s in split_sentences(action))
+        if len(sentences) >= 2:
+            break
+    sentences = sentences[:2]
+    if not sentences:
+        sentences = ["Quiet room tone with soft movement sounds."]
+    elif len(sentences) < 2:
+        sentences.append("Soft room tone continues underneath.")
+
+    # Field labels on their own lines, matching Example_*_Prompt.txt layout.
+    return (
+        f"integrated_multimodal_description:\n{description}\n\n"
+        f"overall_soundscape:\n{' '.join(sentences)}\n\n"
+        "non_diegetic_music:\nN/A"
+    )

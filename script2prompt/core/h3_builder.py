@@ -1,7 +1,15 @@
-"""H3 prompt assembly (base 3-field + R2V 6-section)."""
+"""H3 prompt assembly (Milestone 1: T2VA via rule-based fallback).
+
+Milestone 4 will make the LLM rewrite primary with this as fallback;
+other modes arrive in Milestones 2-3.
+"""
 from __future__ import annotations
 
+from . import fallback
+from .characters import Character
 
-def build(chunk: dict, mode: str = "T2VA") -> str:
-    """Assemble the H3 prompt text for a chunk. TODO: Milestones 1-3."""
-    raise NotImplementedError
+
+def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
+          style: str = "Live-action, cinematic") -> str:
+    """Assemble the H3 prompt text for a chunk."""
+    return fallback.build(chunk, bible=bible, mode=mode, style=style)

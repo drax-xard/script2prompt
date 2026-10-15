@@ -1,0 +1,8 @@
+integrated_multimodal_description:
+Live-action, amateur video.
+[Shot 1] A close-up frames a young woman with purple and pink hair. The camera holds a static shot as she begins to giggle, her head tilting slightly, and she waves one hand toward the camera with a bright, playful smile. Her purple and pink hair moves naturally with the motion, and her body exhibits realistic jiggle physics as she waves. Her black top remains snug against her form, and the purple heart pendant on her choker catches the light. The young woman (S1) says <d>[English]Hello, everyone!</d>.
+[Shot 2] At 00:04.000, the camera cuts to a wide establishing shot of the room where the young woman stands looking at a webcam set up over a pc monitor on a small desk against a wall. The young woman turns around and exits the room.
+
+overall_soundscape: A soft, cheerful giggle rings out, followed by the light rustle of fabric as she moves her hand. The faintest hint of a breathy laugh lingers.
+
+non_diegetic_music: N/A

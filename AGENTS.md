@@ -37,6 +37,10 @@
   voice description goes *outside* `<d>`, verbatim words *inside*;
   `overall_soundscape` must never contain dialogue; v1 mode is per-project
   (`chunk.mode_override` is a v2 hook — don't implement it yet).
+- Real-prompt layout (`H3_Prompting_Docs/Example_*.txt`, which overrides the
+  guides on style): field labels on their own lines, style as standalone opening
+  sentence before `[Shot 1]`, dialogue as `Name (S1) says <d>[Lang]words</d>.`
+  (no colon, no space after language tag, period outside `</d>`).
 
 ## Workflow
 

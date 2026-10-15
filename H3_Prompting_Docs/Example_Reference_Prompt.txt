@@ -1,0 +1,23 @@
+subject_definitions:
+<Subject 1> is the cat from <Picture 1>, with visible facial features matching the reference, dressed in a complete black ninja outfit including a headband, tunic, and mask pulled down to reveal the face.
+<Subject 2> is the busy restaurant kitchen environment from <Picture 2>, featuring commercial cooking equipment, stainless steel counters, stovetops, open flames, hanging cookware, and multiple kitchen staff in chef whites and aprons moving throughout the space.
+<Subject 3> is the whole roasted chicken, golden-brown and freshly cooked from <Picture 3>, which <Subject 1> has stolen.
+
+summary:
+[reference generation] <Subject 1>, the ninja-dressed cat from <Picture 1> with visible face, executes a stealthy crossing through <Subject 2>, the busy restaurant kitchen, carrying <Subject 3>, a whole roasted chicken. Despite the bustling activity and close proximity of kitchen staff, the cat remains undetected, employing expert evasion techniques and moving with deliberate stealth.
+
+retention_analysis:
+<Subject 1> (appears throughout): fully_preserved - the cat's facial features matching <Picture 1>, black ninja outfit, headband, and tunic are retained with visible face throughout.
+<Subject 2> (appears throughout): fully_preserved - the commercial kitchen equipment, stainless steel counters, stovetops, open flames, hanging cookware, and active kitchen staff are retained.
+<Subject 3> (carried throughout): fully_preserved - the golden-brown roasted chicken is retained as the stolen prize.
+
+detailed_description:
+The target video is shot in a tense, comedic heist style with documentary-like kitchen lighting and dynamic camera movement capturing the action.
+
+[Shot 1] The scene opens on <Subject 2>, a bustling restaurant kitchen filled with commercial cooking equipment, stainless steel counters, glowing stovetops with open flames, and hanging cookware. Multiple kitchen staff in white chef coats and black aprons work rapidly, chopping, stirring, and plating dishes. <Subject 1>, the cat dressed in a black ninja outfit with a headband and mask pulled down to reveal the face from <Picture 1>, enters from the lower left of the frame carrying <Subject 3>, the golden-brown whole roasted chicken, tucked under one arm. Moving in a low crouch, the cat advances between the busy kitchen staff with precise, deliberate steps. A chef reaches across the counter inches away, completely unaware. The cat slides silently beneath a prep station, the roasted chicken held flush against its body. The camera follows with a steady tracking shot as <Subject 1> weaves expertly through the chaotic kitchen, timing each movement to pass behind staff members, duck under raised arms, and slip through narrow gaps between equipment. No one turns, no one reacts—the kitchen staff remain absorbed in their tasks. By the final frame, <Subject 1> approaches the far edge of the kitchen, still undetected, <Subject 3> secure.
+
+overall_soundscape:
+The continuous ambient kitchen soundscape includes the sizzle and crackle of hot oil and flames on stovetops, the rapid metallic clinking of pots, pans, and utensils, muffled conversations and shouted orders between staff members, the beep of timers, and the ambient hum of ventilation systems overhead.
+
+non_diegetic_music:
+A tense, minimalist spy-thriller score at a moderate tempo, featuring staccato strings and subtle percussion that accents the cat's precise movements, building slightly in intensity as each obstacle is navigated, then subsiding as the cat successfully passes each staff member undetected.
