@@ -7,6 +7,20 @@ from __future__ import annotations
 
 MODES = ("T2VA", "I2VA", "FL2VA", "L2VA", "R2V")
 
+BASE_FIELDS = (
+    "integrated_multimodal_description:",
+    "overall_soundscape:",
+    "non_diegetic_music:",
+)
+R2V_SECTIONS = (
+    "subject_definitions:",
+    "summary:",
+    "retention_analysis:",
+    "detailed_description:",
+    "overall_soundscape:",
+    "non_diegetic_music:",
+)
+
 
 def instruction_line(mode: str, final_shot: int = 1, duration: float = 8.0) -> str:
     """Render the mode's instruction line ("" for T2VA/R2V)."""

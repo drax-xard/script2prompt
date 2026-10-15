@@ -1,8 +1,9 @@
-"""Rule-based T2VA template filler (offline fallback, Milestone 1).
+"""Rule-based template filler (offline fallback).
 
-Deterministic prose from parsed elements: style + context open Shot 1,
-action sentences verbatim, dialogue verbatim inside ``<d>[English] ...</d>``
-with stable speaker IDs from the bible, one camera sentence per shot.
+Deterministic prose from parsed elements: style sentence, context, action
+sentences verbatim, dialogue verbatim inside ``<d>[English]...</d>`` with
+stable speaker IDs from the bible, one camera sentence per shot, plus the
+mode-specific frame anchors (Milestone 2: I2VA/FL2VA/L2VA).
 The LLM rewrite (Milestone 4) will replace this prose, not the structure.
 """
 from __future__ import annotations
@@ -13,6 +14,7 @@ from script2prompt.parsers.base import Element
 
 from .characters import Character, title
 from .chunker import split_sentences
+from .modes import instruction_line
 
 
 def _clean(text: str) -> str:
@@ -83,30 +85,70 @@ def _shot_text(elements: list[Element], speakers: dict[str, Character],
     return " ".join(parts)
 
 
+def _first_opening(mode: str, context: str) -> str:
+    """Opening sentences for [Shot 1] per mode (guide §3 structures)."""
+    base = "A medium-wide shot frames the scene."
+    if mode == "I2VA":
+        anchor = "The subject shown in <Picture 1> holds the composition, preserving appearance, clothing, and positioning"
+        anchor += f" in {context}" if context else ""
+        anchor += "."
+        return f"{base} {anchor} The camera pushes in with small amplitude at slow speed."
+    if mode == "FL2VA":
+        return (
+            f"{base} The subject begins in the position and framing established by "
+            "Picture 1. The camera holds a static shot."
+        )
+    if mode == "L2VA":
+        return (
+            f"{base} The scene opens on a plausible preceding state, before the "
+            "moment shown in <Picture 1>. The camera pushes in with small amplitude at slow speed."
+        )
+    opening = base
+    if context:
+        opening += f" The scene takes place at {context}."
+    return opening + " The camera pushes in with small amplitude at slow speed."
+
+
+def _closing(mode: str) -> str:
+    """Final landing sentence for single-path keyframe modes."""
+    if mode == "FL2VA":
+        return (
+            "The action settles into the pose, spacing, and composition "
+            "established by Picture 2 at the end of the shot."
+        )
+    if mode == "L2VA":
+        return (
+            "The scene converges on the exact composition established by "
+            "<Picture 1> at the end of the shot."
+        )
+    return ""
+
+
 def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
           style: str = "Live-action, cinematic") -> str:
-    """Build a deterministic T2VA prompt for a chunk."""
-    if mode != "T2VA":
-        raise NotImplementedError(f"{mode} builder arrives in Milestones 2-3")
+    """Build a deterministic prompt for a chunk (T2VA/I2VA/FL2VA/L2VA)."""
+    if mode not in ("T2VA", "I2VA", "FL2VA", "L2VA"):
+        raise NotImplementedError(f"{mode} builder arrives in Milestone 3")
     speakers = chunk.get("speakers", {})
     context = _clean(chunk.get("context", ""))
     shots = chunk.get("shots", [])
+    duration = chunk.get("duration", 8.0)
     mentioned: set[str] = set()
     rendered: list[str] = []
     for i, shot in enumerate(shots):
         if i == 0:
             # Style lives in its own opening sentence (per the real example),
             # not inline in [Shot 1].
-            opening = "A medium-wide shot frames the scene."
-            if context:
-                opening += f" The scene takes place at {context}."
-            opening += " The camera pushes in with small amplitude at slow speed."
+            opening = _first_opening(mode, context)
         else:
             opening = (
                 f"[Shot {i + 1}] At {shot['start']}, the camera cuts to a new "
                 "angle on the ongoing action. The camera holds a static shot."
             )
         body = _shot_text(shot["elements"], speakers, mentioned, opening)
+        closing = _closing(mode)
+        if closing and i == len(shots) - 1:
+            body = f"{body} {closing}"
         rendered.append(body)
     style_sentence = _finish(style)
     description = f"{style_sentence}\n[Shot 1] {rendered[0]}" if rendered else f"{style_sentence}\n[Shot 1] ..."
@@ -125,9 +167,11 @@ def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
     elif len(sentences) < 2:
         sentences.append("Soft room tone continues underneath.")
 
-    # Field labels on their own lines, matching Example_*_Prompt.txt layout.
-    return (
+    fields = (
         f"integrated_multimodal_description:\n{description}\n\n"
         f"overall_soundscape:\n{' '.join(sentences)}\n\n"
         "non_diegetic_music:\nN/A"
     )
+    # Field labels on their own lines, matching Example_*_Prompt.txt layout.
+    instruction = instruction_line(mode, final_shot=max(len(shots), 1), duration=duration)
+    return f"{instruction}\n\n{fields}" if instruction else fields

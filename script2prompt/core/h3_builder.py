@@ -1,7 +1,7 @@
-"""H3 prompt assembly (Milestone 1: T2VA via rule-based fallback).
+"""H3 prompt assembly (Milestones 1-2: rule-based fallback for base modes).
 
 Milestone 4 will make the LLM rewrite primary with this as fallback;
-other modes arrive in Milestones 2-3.
+R2V arrives in Milestone 3.
 """
 from __future__ import annotations
 

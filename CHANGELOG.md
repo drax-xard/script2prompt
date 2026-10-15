@@ -42,6 +42,12 @@ Versioning practices:
   dialogue as `Name (S1) says <d>[Lang]words</d>.` (no colon, no space after the
   language tag, period outside `</d>`). Conventions recorded in `AGENTS.md` and
   `PROJECT_PLAN.md` §2.1.
+- Milestone 2 (keyframe modes): mode-specific `[Shot 1]` openings and landing
+  sentences for I2VA (anchor `<Picture 1>` forward), FL2VA (single-shot path
+  from Picture 1 to Picture 2) and L2VA (converge on `<Picture 1>` in the final
+  shot); `chunk()` takes `mode` and forces single-shot chunks for FL2VA;
+  validator checks instruction lines (without counting `[Shot N]` inside them),
+  the blank line, and flags multi-shot FL2VA; `modes.py` gains section schemas.
 
 ### Changed
 - Dependency policy: project-local `.venv/` only (git-ignored); zero required

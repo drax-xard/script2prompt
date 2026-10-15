@@ -105,16 +105,21 @@ def _make_chunk(scene: dict, elements: list[Element], by_name: dict[str, Charact
 
 
 def chunk(scene: dict, bible: list[Character] = (), duration: float = 8.0,
-          shots_max: int = 3) -> list[dict]:
-    """Split a scene into duration-capped chunks (greedy pack on estimate)."""
+          shots_max: int = 3, mode: str = "T2VA") -> list[dict]:
+    """Split a scene into duration-capped chunks (greedy pack on estimate).
+
+    FL2VA favors a single shot per chunk (guide §3.2), so shot breaks are
+    disabled for that mode.
+    """
     by_name = {c.name: c for c in bible}
+    effective_shots = 1 if mode == "FL2VA" else shots_max
     elements = _split_long_dialogue(scene.get("elements", []))
     chunks: list[dict] = []
     current: list[Element] = []
 
     def flush() -> None:
         if current:
-            chunks.append(_make_chunk(scene, list(current), by_name, duration, shots_max))
+            chunks.append(_make_chunk(scene, list(current), by_name, duration, effective_shots))
             current.clear()
 
     for el in elements:
