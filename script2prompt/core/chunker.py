@@ -50,18 +50,24 @@ def _split_long_dialogue(elements: list[Element]) -> list[Element]:
             continue
         pieces: list[str] = []
         current = ""
+        units: list[str] = []
         for sentence in split_sentences(el.text):
-            candidate = f"{current} {sentence}".strip()
+            if count_words(sentence) <= PIECE_WORDS:
+                units.append(sentence)
+            else:  # one sentence alone exceeds the budget: hard-split it
+                words = sentence.split()
+                units.extend(
+                    " ".join(words[i : i + PIECE_WORDS]) for i in range(0, len(words), PIECE_WORDS)
+                )
+        for unit in units:
+            candidate = f"{current} {unit}".strip()
             if current and count_words(candidate) > PIECE_WORDS:
                 pieces.append(current)
-                current = sentence
+                current = unit
             else:
                 current = candidate
         if current:
             pieces.append(current)
-        if len(pieces) <= 1:  # no sentence breaks: hard-split on words
-            words = el.text.split()
-            pieces = [" ".join(words[i : i + PIECE_WORDS]) for i in range(0, len(words), PIECE_WORDS)]
         total = len(pieces)
         for i, piece in enumerate(pieces):
             if total == 1:

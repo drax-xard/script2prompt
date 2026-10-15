@@ -49,6 +49,13 @@ Versioning practices:
   validator checks instruction lines (without counting `[Shot N]` inside them),
   the blank line, and flags multi-shot FL2VA; `modes.py` gains section schemas.
 
+### Fixed
+- Audit fixes: character bible no longer absorbs one-off ALL-CAPS words (TV/DAY/OK);
+  bare action mentions join only on second mention, cue/intro names always join.
+  Over-long single sentences now hard-split inside monologue chunking.
+  `requires-python` corrected to `>=3.11` (`tomllib`); removed dead
+  `[tool.unittest]` config; `PROJECT_PLAN.md` no longer mentions `pdfplumber`.
+
 ### Changed
 - Dependency policy: project-local `.venv/` only (git-ignored); zero required
   third-party deps for core (stdlib `dataclasses`, `tomllib`, `urllib`, `unittest`,

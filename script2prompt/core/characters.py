@@ -9,6 +9,7 @@ verbatim afterwards.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 
 _ACTION_INTRO = re.compile(r"^([A-Z][A-Z\s'\-]*?)\s*\(([^)]*)\)\s+\S")
@@ -29,22 +30,34 @@ def title(name: str) -> str:
 
 
 def build_bible(scenes: list[dict]) -> list[Character]:
-    """Build the character bible for parsed scenes, in first-appearance order."""
-    order: list[str] = []
+    """Build the character bible for parsed scenes, in first-appearance order.
+
+    Cue names and ``NAME (traits)`` intro names always join. Bare ALL-CAPS
+    mentions in action lines (which also match props, devices, and interjections
+    like TV/DAY/OK) join only on a second mention, as recurring silent characters.
+    """
+    seen: list[str] = []
+    mentions: Counter[str] = Counter()
     traits: dict[str, str] = {}
     vocal_pos: dict[str, int] = {}
+    backed: set[str] = set()
     last_cue: str | None = None
 
-    def note(name: str) -> None:
-        if name and name not in order:
-            order.append(name)
+    def seen_note(name: str) -> None:
+        if not name:
+            return
+        mentions[name] += 1
+        if name not in seen:
+            seen.append(name)
 
     for scene in scenes:
         last_cue = None
         for el in scene["elements"]:
             if el.kind == "character":
                 name = el.meta.get("name", "")
-                note(name)
+                seen_note(name)
+                if name:
+                    backed.add(name)
                 last_cue = name or None
             elif el.kind == "dialogue":
                 if last_cue and last_cue not in vocal_pos:
@@ -54,14 +67,17 @@ def build_bible(scenes: list[dict]) -> list[Character]:
                 m = _ACTION_INTRO.match(text)
                 if m:
                     intro = re.sub(r"\s+", " ", m.group(1)).strip().upper()
-                    if intro and intro not in traits:
-                        traits[intro] = m.group(2).strip()
-                    note(intro)
+                    if intro:
+                        if intro not in traits:
+                            traits[intro] = m.group(2).strip()
+                        backed.add(intro)
+                    seen_note(intro)
                 for found in _CAPS_NAME.findall(text):
                     candidate = re.sub(r"\s+", " ", found).strip().upper()
                     if candidate not in _NOISE:
-                        note(candidate)
+                        seen_note(candidate)
 
+    order = [name for name in seen if name in backed or mentions[name] >= 2]
     bible = []
     for name in order:
         if name in vocal_pos:

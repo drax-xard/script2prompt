@@ -43,10 +43,15 @@ class TestBible(unittest.TestCase):
         self.assertEqual(by_name["LEO"].speaker_id, "S2")
 
     def test_nonvocal_gets_no_id(self) -> None:
-        text = "INT. SHOP - DAY\n\nLEO enters, shaking rain off.\n\nMARA\nHi.\n"
+        text = "INT. SHOP - DAY\n\nLEO enters, shaking rain off. LEO sits down.\n\nMARA\nHi.\n"
         by_name = {c.name: c for c in build_bible(scenes.split(plaintext.parse(text)))}
         self.assertIsNone(by_name["LEO"].speaker_id)
         self.assertEqual(by_name["MARA"].speaker_id, "S1")
+
+    def test_single_mention_noise_stays_out(self) -> None:
+        text = "INT. SHOP - DAY\n\nThe TV is on. It is DAY outside. OK then.\n\nMARA\nHi.\n"
+        names = {c.name for c in build_bible(scenes.split(plaintext.parse(text)))}
+        self.assertEqual(names, {"MARA"})
 
 
 if __name__ == "__main__":

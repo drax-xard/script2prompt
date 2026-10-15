@@ -42,6 +42,18 @@ class TestChunker(unittest.TestCase):
         self.assertIn("out", marks)
         self.assertIn("in", marks)
 
+    def test_long_sentence_splits_within_budget(self) -> None:
+        from script2prompt.core.chunker import PIECE_WORDS, count_words
+
+        words = " ".join(f"w{i}" for i in range(25))
+        tail = " ".join(f"t{i}" for i in range(10))
+        text = f"INT. ROOM - DAY\n\nMARA\n{words}. {tail}.\n"
+        _, chunks = pipeline(text)
+        for ch in chunks:
+            for el in ch["elements"]:
+                if el.kind == "dialogue":
+                    self.assertLessEqual(count_words(el.text), PIECE_WORDS)
+
     def test_timestamps_increase_inside_duration(self) -> None:
         text = "INT. A - DAY\n\nMARA\nOne two three.\n\nLEO\nFour five six.\n"
         _, chunks = pipeline(text)

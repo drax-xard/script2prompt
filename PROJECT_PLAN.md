@@ -100,7 +100,7 @@ script2prompt/
     plaintext.py   # heuristics: ALL-CAPS cues, INT./EXT. regex, blank-line blocks
     fountain.py    # Fountain spec subset
     fdx.py         # Final Draft XML via xml.etree
-    pdf.py         # pypdf/pdfplumber extraction → plaintext parser
+    pdf.py         # pypdf extraction → plaintext parser (optional pdf extra)
   core/
     scenes.py      # split by heading; slugline context prepended to each chunk; SCENE 0 for cold opens
     characters.py  # first-vocalization order → S1..; description captured once, reused verbatim
