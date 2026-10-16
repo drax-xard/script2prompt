@@ -56,6 +56,13 @@ Versioning practices:
   returns non-empty text and falls back to the deterministic templates on error
   or empty output. 15 new tests (52 total), including a stdlib fake
   OpenAI-compatible server exercising `chat` round-trip and live `rewrite`.
+- Milestone 5 (FDX + PDF parsers): `parsers/fdx.py` maps Final Draft
+  `<Paragraph Type=...>` XML (via stdlib `xml.etree`) to elements, joining
+  `<Text>` runs, reading only the script `<Content>` (title page ignored),
+  skipping unknown types, and including dual-dialogue; `parsers/pdf.py`
+  extracts text with lazily-imported `pypdf` and delegates to the plain-text
+  parser (missing-extra error names `.[pdf]`); `parsers/__init__.py` adds
+  `parse_file(path)` suffix dispatch. 8 new tests (60 total).
 
 ### Fixed
 - Audit fixes: character bible no longer absorbs one-off ALL-CAPS words (TV/DAY/OK);
