@@ -48,6 +48,14 @@ Versioning practices:
   shot); `chunk()` takes `mode` and forces single-shot chunks for FL2VA;
   validator checks instruction lines (without counting `[Shot N]` inside them),
   the blank line, and flags multi-shot FL2VA; `modes.py` gains section schemas.
+- Milestone 4 (LLM wiring): `core/prompts.py` with per-mode system prompts for
+  all five modes (`system_prompt()`, shared H3 rules + mode specifics);
+  `core/llm.py` gains `messages()` (system prompt + structured chunk/bible brief,
+  exact instruction line, R2V reference slots) and a working `rewrite()` with an
+  injectable `chat_fn`; `h3_builder.build(..., rewrite=...)` uses the LLM when it
+  returns non-empty text and falls back to the deterministic templates on error
+  or empty output. 15 new tests (52 total), including a stdlib fake
+  OpenAI-compatible server exercising `chat` round-trip and live `rewrite`.
 
 ### Fixed
 - Audit fixes: character bible no longer absorbs one-off ALL-CAPS words (TV/DAY/OK);

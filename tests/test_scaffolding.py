@@ -16,6 +16,7 @@ class TestScaffolding(unittest.TestCase):
         import script2prompt.core.characters  # noqa: F401
         import script2prompt.core.chunker  # noqa: F401
         import script2prompt.core.modes  # noqa: F401
+        import script2prompt.core.prompts  # noqa: F401
         import script2prompt.core.h3_builder  # noqa: F401
         import script2prompt.core.ref_manifest  # noqa: F401
         import script2prompt.core.llm  # noqa: F401

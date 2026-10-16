@@ -166,12 +166,12 @@ script2prompt/
 
 ---
 
-## 6. Milestones (status as of `03fbf0a`, 39 tests green)
+## 6. Milestones (status: milestones 1–4 done, 52 tests green)
 
 1. ✅ Offline core: parsers (txt/fountain) + scenes + bible + chunker + T2VA builder/validator + tests. *Done (`35c17c7`).*
 2. ✅ Mode layer: `modes.py` + I2VA/FL2VA/L2VA instruction lines + body shapes + per-mode validation. *Done (`72fedda`).*
 3. ✅ R2V layer: manifest proposer + 6-section builder + retention markers. *Done (`a239b02`, fixes in `03fbf0a`).*
-4. ⬜ LLM wiring: 5 mode system prompts via local OpenAI-compatible endpoint + fallback templates. *Started: stdlib `urllib` client (`core/llm.py:chat`) exists; `rewrite()` prompts pending.*
+4. ✅ LLM wiring: 5 mode system prompts via local OpenAI-compatible endpoint + fallback templates. *Done: `core/prompts.py` + `core/llm.py:messages/rewrite` + `h3_builder.build(rewrite=...)`.*
 5. ⬜ Remaining parsers: FDX + PDF (stubs with lazy-import errors in place).
 6. ⬜ Web wizard + one sample end-to-end per mode (1-page script → prompts + manifests).
 7. ⬜ Polish: budget meters, linter warnings, config, docs.
