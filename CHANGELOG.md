@@ -108,5 +108,5 @@ _Target: first usable offline core. Nothing released yet._
 - T2VA prompt builder with template fallback and validator.
 - Tests plus sample end-to-end (1-page script -> prompts).
 
-[Unreleased]: https://github.com/YOUR-USER/Script2Prompt/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/YOUR-USER/Script2Prompt/releases/tag/v0.1.0
+[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.1.0
