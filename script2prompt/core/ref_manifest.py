@@ -1,10 +1,10 @@
-"""Reference-manifest proposer for R2V full-reference mode (Milestone 3).
+"""Reference-manifest proposer (Milestone 3 R2V; Milestone 6 keyframe slots).
 
-v1: no image/video upload — the tool proposes Subject/Audio slots as
-placeholders with a user checklist fulfilled externally. Identity-only
-references stay inside ``<Subject N>`` definitions (guide §2.2): no
-standalone ``<Picture N>`` entries are proposed without frame anchors,
-so ``pictures``/``videos`` stay empty until the user attaches assets.
+v1: no image/video upload — the tool proposes reference slots as placeholders
+with a user checklist fulfilled externally. R2V identity-only references stay
+inside ``<Subject N>`` definitions (guide §2.2), so ``pictures``/``videos``
+stay empty there; the keyframe modes instead get ``<Picture N>`` frame slots
+from ``picture_slots``.
 """
 from __future__ import annotations
 
@@ -43,6 +43,24 @@ def _speaker_order(char: Character) -> int:
         return int((char.speaker_id or "")[1:])
     except ValueError:
         return 0
+
+
+def picture_slots(mode: str, final_shot: int) -> list[dict]:
+    """Frame-reference slots for keyframe modes (I2VA/FL2VA/L2VA)."""
+    if mode == "I2VA":
+        return [
+            {"label": "<Picture 1>", "role": "first frame", "shot": 1, "at": "0.00s"},
+        ]
+    if mode == "FL2VA":
+        return [
+            {"label": "<Picture 1>", "role": "first frame", "shot": 1, "at": "0.00s"},
+            {"label": "<Picture 2>", "role": "last frame", "shot": final_shot, "at": "end of video"},
+        ]
+    if mode == "L2VA":
+        return [
+            {"label": "<Picture 1>", "role": "last frame", "shot": final_shot, "at": "end of video"},
+        ]
+    raise ValueError(f"no picture slots for mode: {mode}")
 
 
 def propose(chunk: dict, bible: list[Character] = ()) -> dict:

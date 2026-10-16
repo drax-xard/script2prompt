@@ -63,6 +63,15 @@ Versioning practices:
   extracts text with lazily-imported `pypdf` and delegates to the plain-text
   parser (missing-extra error names `.[pdf]`); `parsers/__init__.py` adds
   `parse_file(path)` suffix dispatch. 8 new tests (60 total).
+- Milestone 6 (wizard + export): `core/pipeline.py` end-to-end glue
+  (`parse_bytes`, `run`, `characters_markdown`, `prompts_markdown`, `manifest`,
+  `reference_manifest`, `export_pack`, `write_pack`); mode-aware reference
+  slots (`ref_manifest.picture_slots` for I2VA/FL2VA/L2VA); `app/web.py`
+  Streamlit wizard (upload → mode/settings → editable bible → generate/export;
+  lazy `streamlit` import) and `script2prompt/__main__.py` CLI
+  (`python -m script2prompt SCRIPT`, templates by default, `--llm` opt-in);
+  `samples/one_page.txt` 1-page sample. 11 new tests (71 total) covering all
+  five modes end-to-end plus export pack and CLI.
 
 ### Fixed
 - Audit fixes: character bible no longer absorbs one-off ALL-CAPS words (TV/DAY/OK);
