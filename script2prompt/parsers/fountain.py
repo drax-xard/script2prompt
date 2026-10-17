@@ -18,13 +18,15 @@ def _forced_heading(line: str) -> bool:
 
 def parse(text: str) -> list[Element]:
     """Parse Fountain-markup screenplay into elements."""
+    lines = text.splitlines()
     elements: list[Element] = []
     in_dialogue = False
-    for lineno, raw in enumerate(text.splitlines(), start=1):
+    for lineno, raw in enumerate(lines, start=1):
         line = raw.strip()
         if not line:
             in_dialogue = False
             continue
+        next_line = lines[lineno].strip() if lineno < len(lines) else ""
         if _forced_heading(line):
             elements.append(Element("heading", line[1:].strip(), {"line": lineno}))
             in_dialogue = False
@@ -43,7 +45,7 @@ def parse(text: str) -> list[Element]:
         elif plaintext._is_transition(line):
             elements.append(Element("transition", line, {"line": lineno}))
             in_dialogue = False
-        elif plaintext._looks_like_cue(line):
+        elif plaintext._looks_like_cue(line, next_line):
             name, ext = plaintext.normalize_cue(line)
             elements.append(
                 Element("character", line, {"name": name, "extension": ext, "line": lineno})

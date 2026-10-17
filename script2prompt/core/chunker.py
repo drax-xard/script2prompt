@@ -2,8 +2,12 @@
 
 Duration estimate per PROJECT_PLAN.md §4:
 ``action_words / 2.5 * 0.4 + dialogue_words / 2.75 + 1.0s overhead``.
-Single dialogue lines over 30 words are pre-split at sentence boundaries
-(<=18 words per piece) with ``scenetrans`` markers for the builder.
+Single dialogue lines over ``MONOLOGUE_WORDS`` are pre-split at sentence
+boundaries (<=18 words per piece) with ``scenetrans`` markers for the builder.
+
+A dialogue cue and its lines stay in one atomic block so a character is never
+separated from what they say; when a monologue is split, the cue is re-emitted
+before each continuation piece so the speaker survives the chunk boundary.
 """
 from __future__ import annotations
 
@@ -15,8 +19,10 @@ from .characters import Character
 
 CAP_SECONDS = 10.0
 MIN_SECONDS = 5.0
-MONOLOGUE_WORDS = 30
+DIALOGUE_WPS = 2.75
 PIECE_WORDS = 18
+# Longest monologue that still fits the 10s cap after the 1.0s overhead.
+MONOLOGUE_WORDS = int((CAP_SECONDS - 1.0) * DIALOGUE_WPS)
 
 
 def count_words(text: str) -> int:
@@ -38,13 +44,22 @@ def estimate(elements: list[Element]) -> float:
     """Estimate playback seconds for a list of elements."""
     action = sum(count_words(e.text) for e in elements if e.kind == "action")
     dialogue = sum(count_words(e.text) for e in elements if e.kind == "dialogue")
-    return action * 0.16 + dialogue / 2.75 + 1.0
+    return action * 0.16 + dialogue / DIALOGUE_WPS + 1.0
 
 
 def _split_long_dialogue(elements: list[Element]) -> list[Element]:
-    """Split >30-word dialogue lines into <=18-word pieces with markers."""
+    """Split >``MONOLOGUE_WORDS`` dialogue lines into <=18-word pieces.
+
+    The active character cue is re-emitted before each continuation piece so
+    the speaker is not lost when the pieces land in separate chunks.
+    """
     out: list[Element] = []
+    last_cue: Element | None = None
     for el in elements:
+        if el.kind == "character":
+            last_cue = el
+            out.append(el)
+            continue
         if el.kind != "dialogue" or count_words(el.text) <= MONOLOGUE_WORDS:
             out.append(el)
             continue
@@ -70,6 +85,8 @@ def _split_long_dialogue(elements: list[Element]) -> list[Element]:
             pieces.append(current)
         total = len(pieces)
         for i, piece in enumerate(pieces):
+            if i > 0 and last_cue is not None:
+                out.append(Element("character", last_cue.text, dict(last_cue.meta)))
             if total == 1:
                 mark = ""
             elif i == 0:
@@ -82,6 +99,26 @@ def _split_long_dialogue(elements: list[Element]) -> list[Element]:
             meta["scenetrans"] = mark
             out.append(Element("dialogue", piece, meta))
     return out
+
+
+def _blocks(elements: list[Element]) -> list[list[Element]]:
+    """Group elements so a character cue stays with its lines.
+
+    Each block is atomic for packing: a cue starts a block that absorbs the
+    following parentheticals/dialogue, so a cue is never flushed alone.
+    """
+    blocks: list[list[Element]] = []
+    current: list[Element] | None = None
+    for el in elements:
+        if el.kind == "character":
+            current = [el]
+            blocks.append(current)
+        elif el.kind in ("parenthetical", "dialogue") and current is not None:
+            current.append(el)
+        else:
+            blocks.append([el])
+            current = None
+    return blocks
 
 
 def _make_chunk(scene: dict, elements: list[Element], by_name: dict[str, Character],
@@ -128,9 +165,9 @@ def chunk(scene: dict, bible: list[Character] = (), duration: float = 8.0,
             chunks.append(_make_chunk(scene, list(current), by_name, duration, effective_shots))
             current.clear()
 
-    for el in elements:
-        if current and estimate(current + [el]) > duration:
+    for block in _blocks(elements):
+        if current and estimate(current + block) > duration:
             flush()
-        current.append(el)
+        current.extend(block)
     flush()
     return chunks

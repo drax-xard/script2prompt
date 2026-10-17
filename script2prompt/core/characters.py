@@ -12,9 +12,10 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
-_ACTION_INTRO = re.compile(r"^([A-Z][A-Z\s'\-]*?)\s*\(([^)]*)\)\s+\S")
+_ACTION_INTRO = re.compile(r"\b([A-Z][A-Z'\-]+(?:\s+[A-Z][A-Z'\-]+){0,2})\s*\(([^)]*)\)")
+_TRAITS_LIKE = re.compile(r"[\d,]")
 _CAPS_NAME = re.compile(r"\b([A-Z]{2,}(?:\s+[A-Z]{2,})?)\b")
-_NOISE = frozenset({"INT", "EXT", "CUT", "FADE", "TO"})
+_NOISE = frozenset({"INT", "EXT", "EST", "CUT", "FADE", "TO"})
 
 
 @dataclass
@@ -64,13 +65,16 @@ def build_bible(scenes: list[dict]) -> list[Character]:
                     vocal_pos[last_cue] = len(vocal_pos)
             elif el.kind == "action":
                 text = el.text.strip()
-                m = _ACTION_INTRO.match(text)
-                if m:
+                for m in _ACTION_INTRO.finditer(text):
                     intro = re.sub(r"\s+", " ", m.group(1)).strip().upper()
-                    if intro:
-                        if intro not in traits:
-                            traits[intro] = m.group(2).strip()
-                        backed.add(intro)
+                    # Only treat NAME (…) as a character intro when the
+                    # parenthetical looks like traits (age/comma), so props
+                    # like "THE SIGN (unreadable)" are not mistaken for people.
+                    if not intro or intro in _NOISE or not _TRAITS_LIKE.search(m.group(2)):
+                        continue
+                    if intro not in traits:
+                        traits[intro] = m.group(2).strip()
+                    backed.add(intro)
                     seen_note(intro)
                 for found in _CAPS_NAME.findall(text):
                     candidate = re.sub(r"\s+", " ", found).strip().upper()

@@ -67,7 +67,7 @@ def run(elements: list[Element], *, mode: str = "T2VA", duration: float = 8.0,
         for chunk in chunker.chunk(scene, bible, duration=duration, shots_max=shots_max, mode=mode):
             index += 1
             prompt = h3_builder.build(chunk, bible, mode=mode, style=style, rewrite=rewrite)
-            issues = validator.validate(prompt, mode=mode, duration=chunk["duration"])
+            issues = validator.validate(prompt, mode=mode, duration=chunk["duration"], bible=bible)
             results.append(ChunkResult(index, scene.get("context", ""), chunk, prompt, issues))
     return Project(mode, duration, shots_max, style, found, bible, results)
 

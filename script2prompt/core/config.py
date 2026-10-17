@@ -25,8 +25,11 @@ def load(path: str | Path = "config.toml", local_override: str | Path = "config.
     cfg = {section: dict(values) for section, values in DEFAULTS.items()}
     for candidate in (Path(path), Path(local_override)):
         if candidate.is_file():
-            with candidate.open("rb") as fh:
-                data = tomllib.load(fh)
+            try:
+                with candidate.open("rb") as fh:
+                    data = tomllib.load(fh)
+            except tomllib.TOMLDecodeError as exc:
+                raise ValueError(f"invalid TOML in {candidate}: {exc}") from exc
             for section, values in data.items():
                 if isinstance(values, dict) and section in cfg:
                     cfg[section].update(values)

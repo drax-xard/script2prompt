@@ -25,4 +25,9 @@ def parse_file(path: str | Path) -> list[Element]:
     if suffix in _PATH:
         return modules[_PATH[suffix]].parse(str(p))
     module = modules[_TEXT.get(suffix, "plaintext")]
-    return module.parse(p.read_text(encoding="utf-8", errors="replace"))
+    raw = p.read_bytes()
+    if b"\x00" in raw:
+        raise ValueError(
+            f"unsupported binary file: {p} (expected a text screenplay, .fdx, or .pdf)"
+        )
+    return module.parse(raw.decode("utf-8", errors="replace"))

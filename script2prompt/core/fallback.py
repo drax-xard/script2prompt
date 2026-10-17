@@ -29,8 +29,17 @@ def _finish(sentence: str) -> str:
 
 
 def _is_voiceover(extension: str, delivery: str) -> bool:
-    blob = re.sub(r"[^A-Z]", "", f"{extension} {delivery}".upper())
-    return "VOICEOVER" in blob or blob in ("OS", "VO", "OC")
+    """True only for a real voiceover (V.O.), not off-screen (O.S./O.C.).
+
+    The extension and delivery are checked independently so a parenthetical
+    like ``MARA (V.O.)`` + ``(softly)`` is still a voiceover, while ``(O.S.)``
+    is left as an on-screen-but-unseen speaker rather than a closed-lips one.
+    """
+    tokens = {
+        re.sub(r"[^A-Z]", "", extension.upper()),
+        re.sub(r"[^A-Z]", "", delivery.upper()),
+    }
+    return bool(tokens & {"VO", "VOICEOVER"})
 
 
 def _speaker_head(name: str, char: Character | None, mentioned: set[str],

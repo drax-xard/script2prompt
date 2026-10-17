@@ -27,11 +27,12 @@ def _sentences(text: str) -> list[str]:
     return [s.strip() for s in re.split(r"[.!?]+", text.strip()) if s.strip()]
 
 
-def validate(prompt: str, mode: str = "T2VA", duration: float = 8.0) -> list[str]:
+def validate(prompt: str, mode: str = "T2VA", duration: float = 8.0,
+             bible: list | None = None) -> list[str]:
     """Return a list of issues (empty = valid)."""
     issues: list[str] = []
     if mode == "R2V":
-        return _validate_r2v(prompt, duration)
+        return _validate_r2v(prompt, duration, bible)
     if mode not in ("T2VA", "I2VA", "FL2VA", "L2VA"):
         return [f"unknown mode: {mode}"]
 
@@ -67,6 +68,7 @@ def validate(prompt: str, mode: str = "T2VA", duration: float = 8.0) -> list[str
 
     issues.extend(_check_shots(body, duration))
     issues.extend(_check_dialogue(prompt))
+    issues.extend(_check_speakers(prompt, bible))
     issues.extend(_check_soundscape(body[found[1] + len(FIELDS[1]) : found[2]].strip()))
     issues.extend(_check_music(body[found[2] + len(FIELDS[2]) :].strip()))
 
@@ -111,6 +113,18 @@ def _check_dialogue(text: str) -> list[str]:
     return issues
 
 
+def _check_speakers(text: str, bible: list | None = None) -> list[str]:
+    issues: list[str] = []
+    if "unseen speaker" in text.lower():
+        issues.append("dialogue attributed to an unseen speaker (missing character cue)")
+    if bible is not None:
+        valid = {c.speaker_id for c in bible if c.speaker_id}
+        for sid in re.findall(r"\(S(\d+)(?:,S\d+)*\)", text):
+            if f"S{sid}" not in valid:
+                issues.append(f"speaker ID S{sid} not in the character bible")
+    return issues
+
+
 def _check_soundscape(text: str) -> list[str]:
     issues: list[str] = []
     if text != "N/A":
@@ -139,7 +153,7 @@ def _section(prompt: str, label: str, following: tuple[str, ...]) -> str:
     return prompt[start:end].strip()
 
 
-def _validate_r2v(prompt: str, duration: float) -> list[str]:
+def _validate_r2v(prompt: str, duration: float, bible: list | None = None) -> list[str]:
     issues: list[str] = []
     found = [prompt.find(section) for section in R2V_SECTIONS]
     if any(pos < 0 for pos in found):
@@ -179,6 +193,7 @@ def _validate_r2v(prompt: str, duration: float) -> list[str]:
     detailed = _section(prompt, "detailed_description:", R2V_SECTIONS[4:])
     issues.extend(_check_shots(detailed, duration))
     issues.extend(_check_dialogue(prompt))
+    issues.extend(_check_speakers(prompt, bible))
     issues.extend(_check_soundscape(_section(prompt, "overall_soundscape:", R2V_SECTIONS[5:])))
     issues.extend(_check_music(_section(prompt, "non_diegetic_music:", ())))
     if len(prompt) > CHAR_BUDGET:

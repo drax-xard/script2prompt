@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
     cfg = config_mod.load()
     mode = args.mode or cfg["project"]["mode"]
     style = args.style or cfg["project"]["style"]
-    duration = args.duration or cfg["project"]["duration"]
+    duration = args.duration if args.duration is not None else cfg["project"]["duration"]
 
     elements = parse_file(args.script)
     project = pipeline.run(

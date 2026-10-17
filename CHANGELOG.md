@@ -88,6 +88,20 @@ Versioning practices:
   true label definitions (line-start only). 7 new tests, 37 total.
 - Audit fixes (R2V): numeric audio ordering (`S10` no longer sorts before `S2`);
   R2V `[Shot 1]` opening gains its missing camera sentence.
+- Deep-audit hardening pass (B1–B13, B15 in `IMPROVEMENTS.md`). Chunker keeps a
+  character cue atomic with its dialogue and re-emits the cue before split
+  monologue continuations, so speaker IDs are never lost ("unseen speaker");
+  the monologue threshold is derived from the 10s cap. Voiceover detection now
+  reads extension and delivery independently (V.O. + parenthetical works) and no
+  longer treats O.S./O.C. as voiceover. Plain-text parser: stricter sluglines
+  (rejects `EXT.`-led dialogue, accepts mixed-case ` - TIME`, recognizes `EST.`),
+  `FADE IN`/`FADE OUT`/`SMASH CUT` transitions, and cue lookahead so lone
+  ALL-CAPS action beats are not characters. Character traits are captured
+  mid-line (with a traits-like guard). CLI honors `--duration 0`; malformed
+  `config.toml` raises a friendly `ValueError`; binary inputs are rejected;
+  validator cross-checks speaker IDs against the bible and flags unseen
+  speakers; `h3_builder.build` rejects scene dicts. 19 new regression tests
+  (`tests/test_hardening.py`), 90 total.
 
 ### Changed
 - Dependency policy: project-local `.venv/` only (git-ignored); zero required

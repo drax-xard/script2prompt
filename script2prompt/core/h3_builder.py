@@ -24,6 +24,11 @@ def _template(chunk: dict, bible: list[Character], mode: str, style: str) -> str
 def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
           style: str = "Live-action, cinematic", rewrite: Rewrite | None = None) -> str:
     """Assemble the H3 prompt for a chunk (LLM when available, else template)."""
+    if "shots" not in chunk:
+        raise ValueError(
+            "build() expects a chunk dict with 'shots'; got a scene — "
+            "run chunker.chunk first"
+        )
     if rewrite is not None:
         try:
             text = rewrite(chunk, bible, mode=mode, style=style)
