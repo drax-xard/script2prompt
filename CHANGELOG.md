@@ -16,18 +16,6 @@ Versioning practices:
 
 ## [Unreleased]
 
-### Added
-- `install.sh` now explains Streamlit's default telemetry collection and, when
-  the `web` extra is chosen and the shell is interactive, offers to write
-  `[browser] gatherUsageStats = false` to `~/.streamlit/config.toml` (preserving
-  existing content, and flipping an existing `gatherUsageStats = true`).
-
-### Fixed
-- Web wizard: the "Write pack to ./out" button exported nothing because the
-  generated project lived in a local variable that did not survive Streamlit's
-  rerun. The project is now cached in `st.session_state` (keyed by the uploaded
-  file's name/size), so the write step works; a new upload invalidates it.
-
 ## [0.10.0] - 2026-10-17
 
 ### Added
@@ -40,6 +28,10 @@ Versioning practices:
   and `S2P_TIMEOUT` environment overrides in `core/config.py`.
 - `pyproject.toml` `dev` extra (`ruff`) with `[tool.ruff]` lint config.
 - `LICENSE` (GPL-3.0-or-later) with matching `pyproject.toml` metadata.
+- `install.sh`: when the `web` extra is chosen it explains Streamlit's default
+  telemetry collection and, if interactive, offers to write
+  `[browser] gatherUsageStats = false` to `~/.streamlit/config.toml` (preserving
+  existing content, and flipping an existing `gatherUsageStats = true`).
 
 ### Changed
 - `core/chunker.py`: long action beats are split at sentence boundaries instead
@@ -58,6 +50,10 @@ Versioning practices:
 ### Fixed
 - `core/llm.py`: `chat` no longer surfaces raw `HTTPError`/`JSONDecodeError`,
   block silently on a hung endpoint, or leak the error response body.
+- Web wizard: the "Write pack to ./out" button exported nothing because the
+  generated project lived in a local variable that did not survive Streamlit's
+  rerun. The project is now cached in `st.session_state` (keyed by the uploaded
+  file's name/size), so the write step works; a new upload invalidates it.
 
 ## [0.9.1] - 2026-10-17
 
