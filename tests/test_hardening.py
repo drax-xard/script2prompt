@@ -164,7 +164,9 @@ class TestCliDurationZero(unittest.TestCase):
                 rc = cli.main(["samples/one_page.txt", "-o", tmp, "--duration", "0"])
             self.assertEqual(rc, 0)
             manifest = json.loads((Path(tmp) / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["duration_target"], 0.0)
+            # 0 is honored (not silently replaced by the config default of 8.0),
+            # then clamped up to the 5s minimum.
+            self.assertEqual(manifest["duration_target"], 5.0)
 
 
 if __name__ == "__main__":

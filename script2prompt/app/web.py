@@ -81,9 +81,29 @@ def main() -> None:
         style=style, bible=bible, rewrite=llm.rewrite if use_llm else None,
     )
 
-    bad = [res.index for res in project.results if res.issues]
-    if bad:
-        st.warning(f"Validation issues in chunk(s): {bad}")
+    warnings = pipeline.lint(project)
+    summary = pipeline.budgets(project)
+
+    st.subheader("Budget")
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Chunks", len(project.results))
+    m2.metric("Total duration", f"{summary['total_duration']:.2f}s")
+    m3.metric("Characters", len(project.bible))
+    for ch in summary["chunks"]:
+        st.caption(
+            f"Chunk {ch['index']}: {ch['chars']}/{summary['char_budget']} chars, "
+            f"{ch['duration']:.2f}s, {ch['shots']} shot(s)"
+        )
+        st.progress(min(ch["char_ratio"], 1.0))
+    if summary["over_budget"]:
+        st.error(f"Over the {summary['char_budget']}-char budget: {summary['over_budget']}")
+
+    if warnings:
+        with st.expander(f"Lint warnings ({len(warnings)})", expanded=True):
+            for warning in warnings:
+                st.warning(warning)
+    else:
+        st.success("Lint: no warnings")
 
     for res in project.results:
         st.markdown(f"### Chunk {res.index} — {mode} ({res.chunk['duration']:.2f}s)")

@@ -166,7 +166,7 @@ script2prompt/
 
 ---
 
-## 6. Milestones (status: milestones 1–6 done, 71 tests green)
+## 6. Milestones (status: milestones 1–7 done, 102 tests green)
 
 1. ✅ Offline core: parsers (txt/fountain) + scenes + bible + chunker + T2VA builder/validator + tests. *Done (`35c17c7`).*
 2. ✅ Mode layer: `modes.py` + I2VA/FL2VA/L2VA instruction lines + body shapes + per-mode validation. *Done (`72fedda`).*
@@ -174,7 +174,7 @@ script2prompt/
 4. ✅ LLM wiring: 5 mode system prompts via local OpenAI-compatible endpoint + fallback templates. *Done: `core/prompts.py` + `core/llm.py:messages/rewrite` + `h3_builder.build(rewrite=...)`.*
 5. ✅ Remaining parsers: FDX + PDF. *Done: `parsers/fdx.py` (`xml.etree`), `parsers/pdf.py` (lazy `pypdf`), `parsers/__init__.py:parse_file` dispatch.*
 6. ✅ Web wizard + one sample end-to-end per mode (1-page script → prompts + manifests). *Done: `core/pipeline.py` + `app/web.py` (Streamlit) + `__main__.py` CLI + `samples/one_page.txt`; all 5 modes validate clean.*
-7. ⬜ Polish: budget meters, linter warnings, config, docs.
+7. ✅ Polish: budget meters, linter warnings, config, docs. *Done: `pipeline.budgets` + `pipeline.lint`, CLI `--shots/--config/--strict` + budget/lint output, web budget meters + lint panel, duration/shots clamping, README.*
 
 v2 hooks (no work now): `chunk.mode_override`, image upload/preview, storyboard multi-panel sheets, ComfyUI/API direct submit.
 
@@ -184,4 +184,4 @@ v2 hooks (no work now): `chunk.mode_override`, image upload/preview, storyboard 
 
 - ✅ Default chunk duration **8s**, style **`Live-action, cinematic`** unless script states otherwise (in `config.toml`).
 - ✅ Local endpoint via `OPENAI_BASE_URL` / `S2P_MODEL` env, mirrored in `config.toml` (implemented in `core/config.py:load`).
-- ❓ Export set: `prompts.md` + `manifest.json` (+ `reference_manifest.json`, `characters.md`) sufficient for v1? *Still open — decided with the web wizard (Milestone 6).*
+- ✅ Export set: `prompts.md` + `manifest.json` (+ `reference_manifest.json`, `characters.md`) sufficient for v1? *Resolved — kept as the v1 pack; per-chunk `.txt` added for convenience (Milestone 6).*

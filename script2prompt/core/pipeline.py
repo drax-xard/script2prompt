@@ -58,6 +58,8 @@ def run(elements: list[Element], *, mode: str = "T2VA", duration: float = 8.0,
         shots_max: int = 3, style: str = "Live-action, cinematic",
         bible: list[Character] | None = None, rewrite=None) -> Project:
     """Parse-to-prompts for one project (mode locked for all chunks)."""
+    duration = min(max(duration, chunker.MIN_SECONDS), chunker.CAP_SECONDS)
+    shots_max = min(max(int(shots_max), 1), 3)
     found = scenes_mod.split(elements)
     if bible is None:
         bible = build_bible(found)
@@ -70,6 +72,44 @@ def run(elements: list[Element], *, mode: str = "T2VA", duration: float = 8.0,
             issues = validator.validate(prompt, mode=mode, duration=chunk["duration"], bible=bible)
             results.append(ChunkResult(index, scene.get("context", ""), chunk, prompt, issues))
     return Project(mode, duration, shots_max, style, found, bible, results)
+
+
+def budgets(project: Project) -> dict:
+    """Per-chunk and project-level budget usage (chars, duration, shots)."""
+    chunks = []
+    for res in project.results:
+        size = len(res.prompt)
+        chunks.append(
+            {
+                "index": res.index,
+                "chars": size,
+                "char_budget": validator.CHAR_BUDGET,
+                "char_ratio": round(size / validator.CHAR_BUDGET, 3),
+                "duration": res.chunk["duration"],
+                "shots": len(res.chunk["shots"]),
+                "over_budget": size > validator.CHAR_BUDGET,
+            }
+        )
+    return {
+        "char_budget": validator.CHAR_BUDGET,
+        "chunks": chunks,
+        "total_chars": sum(c["chars"] for c in chunks),
+        "total_duration": round(sum(c["duration"] for c in chunks), 3),
+        "over_budget": [c["index"] for c in chunks if c["over_budget"]],
+    }
+
+
+def lint(project: Project) -> list[str]:
+    """Aggregate validator issues plus project-level warnings."""
+    warnings: list[str] = []
+    if not project.bible:
+        warnings.append("no characters detected in the screenplay")
+    if not project.results:
+        warnings.append("no chunks generated")
+    for res in project.results:
+        for issue in res.issues:
+            warnings.append(f"chunk {res.index}: {issue}")
+    return warnings
 
 
 def characters_markdown(bible: list[Character]) -> str:

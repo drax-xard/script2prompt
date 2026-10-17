@@ -16,6 +16,16 @@ Versioning practices:
 
 ## [Unreleased]
 
+### Added
+- Milestone 7 (polish): `pipeline.budgets` (per-chunk and project character/
+  duration/shot usage) and `pipeline.lint` (validator issues aggregated with
+  project-level warnings). CLI gains `--shots`, `--config`, `--strict`, plus a
+  budget/lint summary; the web wizard gains budget meters and a lint panel.
+- `README.md`: project overview, status, install/usage, config, layout.
+
+### Changed
+- `pipeline.run` clamps `duration` to the 5-10s range and `shots_max` to 1-3.
+
 ## [0.9.0] - 2026-10-16
 
 ### Added

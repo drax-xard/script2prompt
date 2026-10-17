@@ -22,6 +22,8 @@ a minor bump until 1.0. See [`CHANGELOG.md`](CHANGELOG.md) for history and
 - **Builders + validator:** deterministic templates by default, optional LLM
   rewrite, and a linter for the H3 rules (fields, shots, timestamps, dialogue
   tags, soundscape/music budgets, speaker IDs, 7000-char cap).
+- **Lint + budgets:** project-level lint warnings and per-chunk character-budget
+  meters, shown in the CLI and web wizard.
 
 ### Modes
 
@@ -56,11 +58,13 @@ CLI (deterministic templates by default; `--llm` opt-in):
 
 ```bash
 .venv/bin/python -m script2prompt samples/one_page.txt -m T2VA -o out
-.venv/bin/python -m script2prompt samples/one_page.txt --duration 8 --llm
+.venv/bin/python -m script2prompt samples/one_page.txt --duration 8 --shots 3 --llm
 ```
 
-Options: `-m/--mode {T2VA,I2VA,FL2VA,L2VA,R2V}`, `-o/--out DIR`,
-`--style TEXT`, `--duration SECONDS`, `--llm`.
+Options: `-m/--mode {T2VA,I2VA,FL2VA,L2VA,R2V}`, `-o/--out DIR`, `--style TEXT`,
+`--duration SECONDS`, `--shots N` (max shots per chunk, 1-3), `--config PATH`
+(alternate config file), `--llm`, `--strict` (exit non-zero on any lint warning).
+The run prints a budget summary (total duration, characters) and lint warnings.
 
 Web wizard (requires the `web` extra):
 
