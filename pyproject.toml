@@ -1,6 +1,6 @@
 [project]
 name = "script2prompt"
-version = "0.1.0"
+version = "0.9.0"
 description = "Translate movie scripts/screenplays into Minimax H3 video prompts"
 requires-python = ">=3.11"
 dependencies = []

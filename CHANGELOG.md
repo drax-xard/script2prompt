@@ -16,6 +16,8 @@ Versioning practices:
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-16
+
 ### Added
 - `PROJECT_PLAN.md`: initial project plan (parsers, scene/chunk logic, character bible,
   multi-mode H3 support, web wizard, milestones).
@@ -31,7 +33,7 @@ Versioning practices:
   transitions); scene splitter with slugline context carry-over; character bible
   (speaker IDs in first-vocalization order, descriptions from `NAME (traits)`
   action intros, `None` IDs for non-vocal characters); chunker (duration estimate,
-  greedy pack to target, <=10s, <=3 shots, `MM:SS.mmm` stamps, >30-word monologue
+  greedy pack to target, <=10s, <=3 shots, `MM:SS.mmm` stamps, long-monologue
   split with `<scenetrans>` markers); deterministic T2VA template builder
   (`core/fallback.py` via `core/h3_builder.py`); T2VA validator (fields, shots,
   timestamps, `<d>` tags, soundscape/music budgets, 7000-char cap);
@@ -113,14 +115,5 @@ Versioning practices:
 - Config format `config.yaml` → `config.toml` (stdlib `tomllib`).
   `PROJECT_PLAN.md` documents the dependency use policy (§3.2).
 
-## [0.1.0] - TBD
-
-_Target: first usable offline core. Nothing released yet._
-
-### Planned
-- Plain-text and Fountain parsers, scene splitter, character bible, chunker (<=10s, <=3 shots).
-- T2VA prompt builder with template fallback and validator.
-- Tests plus sample end-to-end (1-page script -> prompts).
-
-[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.1.0
+[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.9.0
