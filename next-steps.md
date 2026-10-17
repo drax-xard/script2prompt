@@ -6,8 +6,8 @@ not a design doc — the v2 design lives in [`IMPROVEMENTS.md`](IMPROVEMENTS.md)
 
 ## Status snapshot (verified)
 
-- Version **`0.11.0`** (`pyproject.toml`), pre-1.0.
-- Tests: **149 green** — `.venv/bin/python -m unittest discover -s tests`.
+- Version **`0.11.1`** (`pyproject.toml`), pre-1.0.
+- Tests: **153 green** — `.venv/bin/python -m unittest discover -s tests`.
 - Lint: **clean** — `.venv/bin/ruff check .`.
 - venv Python: **3.14.4**; `requires-python = ">=3.11"`.
 - Working tree has **uncommitted changes**: the Section A loose ends below
@@ -106,6 +106,6 @@ existing pipeline.
 ## E. Quick verification (run after any change)
 
 ```bash
-.venv/bin/python -m unittest discover -s tests   # expect 149+ tests OK
+.venv/bin/python -m unittest discover -s tests   # expect 153+ tests OK
 .venv/bin/ruff check .                            # expect clean
 ```

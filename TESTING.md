@@ -40,7 +40,7 @@ Optional extras (only if you need them):
 .venv/bin/python -m unittest discover -s tests
 ```
 
-Expected: `Ran 149 tests ... OK`. If this fails, stop here — the environment is
+Expected: `Ran 153 tests ... OK`. If this fails, stop here — the environment is
 not set up correctly and the rest of the guide will not be meaningful.
 
 Optional lint check (needs the `dev` extra):

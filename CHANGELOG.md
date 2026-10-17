@@ -14,13 +14,29 @@ Versioning practices:
 - Each release gets a dated section below with `Added / Changed / Fixed / Removed` entries
   and (once published) a version tag `vX.Y.Z` plus a GitHub release.
 
-## [Unreleased]
+## [0.11.1] - 2026-10-17
+
+Real-screenplay hardening: ran the full *Big Fish* feature (Fountain/FDX/PDF)
+end-to-end and fixed the two issues it surfaced.
 
 ### Added
 - `samples/Big_Fish/README.md`: pointer for a locally-obtained *Big Fish*
   (2003) screenplay as an industry-standard pipeline test. The screenplay
   itself (**© 2003 Columbia Pictures**, not public domain) is git-ignored and
   not committed or shipped in release archives.
+
+### Changed
+- `parsers/pdf.py`: extract with pypdf's `layout` mode (falling back to the
+  default when unavailable) so hard-wrapped screenplay PDFs keep their paragraph
+  breaks. Previously the whole script collapsed into one scene (`B27`).
+- `.gitignore`: ignore `build/` and `dist/` (setuptools artifacts).
+- Version `0.11.0` -> `0.11.1`.
+
+### Fixed
+- `core/chunker.py`: dialogue length is now measured **cumulatively per cue**,
+  so a monologue written as many short lines (or reflowed PDF text) can no
+  longer exceed the 10s cap; the cue is re-emitted per continuation piece with
+  `<scenetrans>` crossings (`B26`).
 
 ## [0.11.0] - 2026-10-17
 
@@ -254,7 +270,8 @@ Versioning practices:
 - Config format `config.yaml` → `config.toml` (stdlib `tomllib`).
   `PROJECT_PLAN.md` documents the dependency use policy (§3.2).
 
-[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/drax-xard/script2prompt/releases/tag/v0.11.1
 [0.11.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.11.0
 [0.10.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.10.0
 [0.9.1]: https://github.com/drax-xard/script2prompt/releases/tag/v0.9.1

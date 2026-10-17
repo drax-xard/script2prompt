@@ -177,7 +177,7 @@ script2prompt/
 
 ---
 
-## 6. Milestones (status: milestones 1–8 done, 149 tests green)
+## 6. Milestones (status: milestones 1–8 done, 153 tests green)
 
 1. ✅ Offline core: parsers (txt/fountain) + scenes + bible + chunker + T2VA builder/validator + tests. *Done (`35c17c7`).*
 2. ✅ Mode layer: `modes.py` + I2VA/FL2VA/L2VA instruction lines + body shapes + per-mode validation. *Done (`72fedda`).*
@@ -188,6 +188,7 @@ script2prompt/
 7. ✅ Polish: budget meters, linter warnings, config, docs. *Done: `pipeline.budgets` + `pipeline.lint`, CLI `--shots/--config/--strict` + budget/lint output, web budget meters + lint panel, duration/shots clamping, README.*
 8. ✅ Output quality + LLM robustness (0.10.0): shared `core/render.py`, long-action splitting, tiny-chunk merge, name casing, environment naming, hardened `llm.chat` (`LLMError`, retries, timeouts), GPL-3.0 license, `ruff` dev extra.
 9. ✅ Second deep audit (0.11.0): `B16`–`B25` fixes — BOM handling, R2V empty-subject synthesis, voiceover parentheticals, phantom joint names, `title()` designators, Fountain dialogue state, friendly env errors, T2VA reference manifest, empty style, `.spmd` docs.
+10. ✅ Real-screenplay hardening (unreleased): ran the pipeline against the full *Big Fish* feature in Fountain/FDX/PDF; fixed the cumulative monologue cap (`B26`) and PDF layout extraction (`B27`).
 
 v2 hooks (no work now): `chunk.mode_override`, image upload/preview, storyboard multi-panel sheets, ComfyUI/API direct submit.
 

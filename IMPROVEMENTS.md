@@ -262,6 +262,34 @@ checklist (`chunks: []`) instead of raising.
 "Screenplay Markdown" extension), but `TESTING.md` listed it as plain-text. Fix:
 docs now group `.spmd` with `.fountain`.
 
+### B26 — [FIXED] Medium: a cue's dialogue run could exceed the 10s cap (found via *Big Fish*)
+
+`_split_long_dialogue` only split a *single* dialogue line over
+`MONOLOGUE_WORDS` (24); `_blocks` keeps a cue with all its following dialogue
+atomic and the packer cannot break a block. A monologue written as several
+short lines (or hard-wrapped PDF text) therefore stayed in one block — the real
+*Big Fish* script produced 14/16.6s chunks in Fountain/FDX and up to 156.6s in
+PDF, two of which blew the 7000-char prompt budget.
+
+Fix: measure words **cumulatively per cue**. A run that overflows is broken,
+the cue re-emitted before each continuation piece, and crossings flagged with
+`<scenetrans>` on both sides; the trailing piece's words carry into the next
+measurement so a following line cannot silently re-overflow. Every chunk now
+fits the cap for all three Big Fish formats (Fountain/FDX max 9.7s, PDF 9.96s).
+
+### B27 — [FIXED] High: PDF text extraction destroyed the screenplay structure (found via *Big Fish*)
+
+`parsers/pdf.py` fed pypdf's default extraction straight to `plaintext.parse`,
+but screenplay PDFs are hard-wrapped into narrow columns with no blank lines
+between blocks. The plain-text state machine only leaves dialogue mode on a
+blank line, so *Big Fish* collapsed to **1 scene** (0 headings, 10 action,
+3858 “dialogue” elements) and every chunk lost its setting.
+
+Fix: extract with pypdf's `layout` mode (falling back to the default for pypdf
+versions/Writers without it), which preserves per-paragraph line breaks. *Big
+Fish* now yields 192 headings (matching the Fountain file), 193 scenes, and 0
+validator issues.
+
 ---
 
 ## Improvements (robustness / design)
@@ -302,11 +330,12 @@ docs now group `.spmd` with `.fountain`.
 
 ## Test gaps
 
-Addressed by `tests/test_hardening.py` (B1–B22 regression tests, including B14
-joint speakers and B16–B24 audit fixes), `tests/test_parsers.py` (B16/B21), and
-`tests/test_quality.py` + `tests/test_llm.py` for the 0.10.0 work. `write_pack`
-clean/overwrite semantics and the T2VA empty reference manifest (B23) are covered
-in `tests/test_pipeline.py`. No known open gaps.
+Addressed by `tests/test_hardening.py` (B1–B26 regression tests, including B14
+joint speakers, B16–B24 audit fixes, and B26 monologue-cap cases),
+`tests/test_parsers.py` (B16/B21/B27), and `tests/test_quality.py` +
+`tests/test_llm.py` for the 0.10.0 work. `write_pack` clean/overwrite semantics
+and the T2VA empty reference manifest (B23) are covered in
+`tests/test_pipeline.py`. No known open gaps.
 
 ## Tooling / repo hygiene
 
@@ -332,6 +361,8 @@ in `tests/test_pipeline.py`. No known open gaps.
    parentheticals, phantom joint names, `title()` designators, Fountain dialogue
    state, env-error message, T2VA reference manifest, empty style, `.spmd`
    docs). **Done.**
+8. **B26/B27** (real-screenplay test: cumulative monologue split cap, PDF layout
+   extraction). **Done.**
 
 ---
 

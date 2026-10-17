@@ -174,12 +174,27 @@ class TestPdf(unittest.TestCase):
         self.assertIn("pip install .[pdf]", str(ctx.exception))
 
     def test_extract_and_parse_with_fake_pypdf(self) -> None:
+        # _FakePage.extract_text takes no kwargs, so this also covers the older
+        # pypdf fallback path when layout mode is unavailable.
         fake = types.SimpleNamespace(PdfReader=_FakeReader)
         with mock.patch.dict(sys.modules, {"pypdf": fake}):
             self.assertIn("MARA", pdf.extract_text("x.pdf"))
             elements = pdf.parse("x.pdf")
         self.assertEqual([e.kind for e in elements], ["heading", "character", "dialogue"])
         self.assertEqual(elements[1].meta["name"], "MARA")
+
+    def test_layout_extraction_preserves_block_structure(self) -> None:
+        class _LayoutPage:
+            def extract_text(self, extraction_mode=None):
+                if extraction_mode == "layout":
+                    return "INT. X - DAY\n\nMARA\nHi there.\n"
+                return "INT. X - DAY MARA Hi there."
+
+        reader = types.SimpleNamespace(pages=[_LayoutPage()])
+        fake = types.SimpleNamespace(PdfReader=lambda path: reader)
+        with mock.patch.dict(sys.modules, {"pypdf": fake}):
+            elements = pdf.parse("x.pdf")
+        self.assertEqual([e.kind for e in elements], ["heading", "character", "dialogue"])
 
 
 class TestDispatch(unittest.TestCase):

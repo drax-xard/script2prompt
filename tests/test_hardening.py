@@ -13,6 +13,7 @@ from script2prompt import __main__ as cli
 from script2prompt.core import chunker, config, h3_builder, scenes, validator
 from script2prompt.core.characters import Character, build_bible
 from script2prompt.parsers import fountain, parse_file, plaintext
+from script2prompt.parsers.base import Element
 
 
 def pipeline(text: str, **kwargs):
@@ -49,6 +50,34 @@ class TestChunkerBudget(unittest.TestCase):
         words = " ".join(f"w{i}" for i in range(26))
         _, chunks = pipeline(f"INT. R - DAY\n\nMARA\n{words}.\n")
         for ch in chunks:
+            self.assertLessEqual(chunker.estimate(ch["elements"]), chunker.CAP_SECONDS + 1e-9)
+
+    def test_multiline_monologue_respects_cap(self) -> None:
+        # Many short lines under one cue sum well past the cap; each chunk must
+        # still fit and keep its speaker cue (no "unseen speaker").
+        lines = "\n".join(f"line {i} carries several more words here" for i in range(8))
+        _, chunks = pipeline(f"INT. R - DAY\n\nMARA\n{lines}\n")
+        self.assertGreater(len(chunks), 1)
+        for ch in chunks:
+            self.assertLessEqual(chunker.estimate(ch["elements"]), chunker.CAP_SECONDS + 1e-9)
+            self.assertEqual(ch["elements"][0].kind, "character")
+
+    def test_parenthetical_interrupted_monologue_respects_cap(self) -> None:
+        first = " ".join(f"a{i}" for i in range(15))
+        second = " ".join(f"b{i}" for i in range(17))
+        _, chunks = pipeline(f"INT. R - DAY\n\nWILL\n{first}\n(closer)\n{second}\n")
+        for ch in chunks:
+            self.assertLessEqual(chunker.estimate(ch["elements"]), chunker.CAP_SECONDS + 1e-9)
+
+    def test_no_chunk_exceeds_cap_after_splitting(self) -> None:
+        scene = {
+            "context": "INT. R - DAY",
+            "elements": [
+                Element("character", "MARA"),
+                *[Element("dialogue", f"piece {i} of a long speech continues") for i in range(10)],
+            ],
+        }
+        for ch in chunker.chunk(scene):
             self.assertLessEqual(chunker.estimate(ch["elements"]), chunker.CAP_SECONDS + 1e-9)
 
 

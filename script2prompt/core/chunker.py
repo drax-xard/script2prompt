@@ -2,12 +2,16 @@
 
 Duration estimate per PROJECT_PLAN.md §4:
 ``action_words / 2.5 * 0.4 + dialogue_words / 2.75 + 1.0s overhead``.
-Single dialogue lines over ``MONOLOGUE_WORDS`` are pre-split at sentence
-boundaries (<=18 words per piece) with ``scenetrans`` markers for the builder.
+Dialogue that overruns the 10s cap is pre-split at sentence boundaries (<=18
+words per piece) with ``scenetrans`` markers for the builder. The overrun is
+measured per cue **cumulatively**: a single long line is split, and so is a run
+of short lines that together exceed ``MONOLOGUE_WORDS`` (a monologue written one
+line per beat, or hard-wrapped PDF text).
 
 A dialogue cue and its lines stay in one atomic block so a character is never
-separated from what they say; when a monologue is split, the cue is re-emitted
-before each continuation piece so the speaker survives the chunk boundary.
+separated from what they say; whenever a monologue is split, the cue is
+re-emitted before each continuation piece so the speaker survives the chunk
+boundary.
 """
 from __future__ import annotations
 
@@ -81,37 +85,80 @@ def _pieces(text: str, piece_words: int) -> list[str]:
 
 
 def _split_long_dialogue(elements: list[Element]) -> list[Element]:
-    """Split >``MONOLOGUE_WORDS`` dialogue lines into <=18-word pieces.
+    """Split dialogue so no run under one cue exceeds ``MONOLOGUE_WORDS``.
 
-    The active character cue is re-emitted before each continuation piece so
-    the speaker is not lost when the pieces land in separate chunks.
+    Words are counted per cue, not per line: several short lines that together
+    overflow the cap (a monologue written one line per beat, or hard-wrapped PDF
+    text) are broken just like a single long line. The active cue is re-emitted
+    before each continuation piece and crossing pieces carry ``scenetrans``
+    markers so the speaker is not lost and the cut is described.
     """
     out: list[Element] = []
-    last_cue: Element | None = None
+    cue: Element | None = None
+    consumed = 0
+
+    def mid_run() -> bool:
+        # We are part-way through a cue's speech if the last thing emitted was
+        # that cue's own dialogue/parenthetical (so a new piece needs its own
+        # cue to stay attached to the speaker).
+        return bool(out) and out[-1].kind in ("dialogue", "parenthetical")
+
+    def emit_cue() -> None:
+        if cue is not None:
+            out.append(Element("character", cue.text, dict(cue.meta)))
+
+    def mark_last(mark: str) -> None:
+        for el in reversed(out):
+            if el.kind == "dialogue":
+                current = el.meta.get("scenetrans", "")
+                if not current:
+                    el.meta["scenetrans"] = mark
+                elif current != mark:
+                    el.meta["scenetrans"] = "both"
+                return
+
+    def add_piece(text: str, meta: dict, carries: bool, continues: bool) -> None:
+        mark = "both" if (carries and continues) else "in" if carries else "out" if continues else ""
+        piece_meta = dict(meta)
+        if mark:
+            piece_meta["scenetrans"] = mark
+        out.append(Element("dialogue", text, piece_meta))
+
     for el in elements:
         if el.kind == "character":
-            last_cue = el
+            cue = el
+            consumed = 0
             out.append(el)
             continue
-        if el.kind != "dialogue" or count_words(el.text) <= MONOLOGUE_WORDS:
+        if el.kind != "dialogue":
             out.append(el)
             continue
-        pieces = _pieces(el.text, PIECE_WORDS)
-        total = len(pieces)
-        for i, piece in enumerate(pieces):
-            if i > 0 and last_cue is not None:
-                out.append(Element("character", last_cue.text, dict(last_cue.meta)))
-            if total == 1:
-                mark = ""
-            elif i == 0:
-                mark = "out"
-            elif i == total - 1:
-                mark = "in"
-            else:
-                mark = "both"
-            meta = dict(el.meta)
-            meta["scenetrans"] = mark
-            out.append(Element("dialogue", piece, meta))
+        words = count_words(el.text)
+        if words > MONOLOGUE_WORDS:
+            # A single over-long line: split it into sentence-boundary pieces.
+            pieces = _pieces(el.text, PIECE_WORDS)
+            total = len(pieces)
+            for i, piece in enumerate(pieces):
+                starts_new = i > 0 or mid_run()
+                if starts_new:
+                    if i == 0:
+                        mark_last("out")
+                    emit_cue()
+                add_piece(piece, el.meta, carries=starts_new, continues=i < total - 1)
+            # The final piece keeps the run going, so later short lines are
+            # still measured against the cap cumulatively.
+            consumed = count_words(pieces[-1]) if pieces else 0
+            continue
+        if cue is not None and consumed and consumed + words > MONOLOGUE_WORDS:
+            # Short lines that overflow together: break, re-emit the cue, and
+            # flag the crossing on both sides.
+            mark_last("out")
+            emit_cue()
+            add_piece(el.text, el.meta, carries=True, continues=False)
+            consumed = words
+            continue
+        out.append(el)
+        consumed += words
     return out
 
 
