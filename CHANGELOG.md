@@ -14,6 +14,14 @@ Versioning practices:
 - Each release gets a dated section below with `Added / Changed / Fixed / Removed` entries
   and (once published) a version tag `vX.Y.Z` plus a GitHub release.
 
+## [Unreleased]
+
+### Added
+- `samples/Big_Fish/README.md`: pointer for a locally-obtained *Big Fish*
+  (2003) screenplay as an industry-standard pipeline test. The screenplay
+  itself (**© 2003 Columbia Pictures**, not public domain) is git-ignored and
+  not committed or shipped in release archives.
+
 ## [0.11.0] - 2026-10-17
 
 ### Added

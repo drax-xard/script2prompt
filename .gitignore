@@ -19,6 +19,11 @@ exports/
 # Release archives
 *.zip
 
+# Copyrighted sample screenplay (obtain locally — see samples/Big_Fish/README.md)
+samples/Big_Fish/*.pdf
+samples/Big_Fish/*.fdx
+samples/Big_Fish/*.fountain
+
 # OS / editors
 .DS_Store
 .idea/
