@@ -16,15 +16,27 @@ Versioning practices:
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-17
+
 ### Added
 - Milestone 7 (polish): `pipeline.budgets` (per-chunk and project character/
   duration/shot usage) and `pipeline.lint` (validator issues aggregated with
   project-level warnings). CLI gains `--shots`, `--config`, `--strict`, plus a
   budget/lint summary; the web wizard gains budget meters and a lint panel.
-- `README.md`: project overview, status, install/usage, config, layout.
+- `README.md`: project overview, status, install/usage, config, layout, plus a
+  first-time setup section for `install.sh`/`run_web.sh`.
+- `run_web.sh`: checks the venv/`web` extra is installed before launching the
+  Streamlit wizard.
+- `install.sh`: creates the project venv and interactively installs the chosen
+  optional extra (`none`/`pdf`/`web`/`both`, also as an argument).
 
 ### Changed
 - `pipeline.run` clamps `duration` to the 5-10s range and `shots_max` to 1-3.
+
+### Fixed
+- `pyproject.toml`: pin setuptools package discovery to `script2prompt*` so
+  editable installs no longer fail on flat-layout dirs (`out/`, `samples/`,
+  `H3_Prompting_Docs/`).
 
 ## [0.9.0] - 2026-10-16
 
@@ -125,5 +137,6 @@ Versioning practices:
 - Config format `config.yaml` → `config.toml` (stdlib `tomllib`).
   `PROJECT_PLAN.md` documents the dependency use policy (§3.2).
 
-[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/drax-xard/script2prompt/releases/tag/v0.9.1
 [0.9.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.9.0

@@ -4,7 +4,7 @@ Translate movie scripts (screenplays) into Minimax H3 video prompts. Point it
 at a screenplay and it produces a ready-to-use prompt pack: one validated H3
 prompt per 5–10s chunk, with a consistent character bible.
 
-**Status: `0.9.0` (pre-1.0).** All core features and all five H3 modes are
+**Status: `0.9.1` (pre-1.0).** All core features and all five H3 modes are
 implemented, tested, and validated end-to-end. Output format may still change at
 a minor bump until 1.0. See [`CHANGELOG.md`](CHANGELOG.md) for history and
 [`IMPROVEMENTS.md`](IMPROVEMENTS.md) for the audit/backlog.
@@ -43,7 +43,25 @@ a minor bump until 1.0. See [`CHANGELOG.md`](CHANGELOG.md) for history and
 
 ## Install
 
-Project-local virtualenv only:
+First-time users: run the setup script and answer one prompt.
+
+```bash
+./install.sh        # creates .venv, then asks which extras to install
+```
+
+It checks for Python `>=3.11`, creates a project-local `.venv`, and installs the
+package in editable mode. The prompt offers:
+
+| Choice | Installs | Enables |
+| ------ | -------- | ------- |
+| `0`/`none` | core only | CLI, zero third-party deps |
+| `1`/`pdf` | `pypdf>=4.0` | `.pdf` input |
+| `2`/`web` | `streamlit>=1.30` | web wizard |
+| `3`/`both` | both extras | everything |
+
+Pass the choice as an argument to skip the prompt (e.g. `./install.sh both`).
+
+Manual equivalent (project-local virtualenv only):
 
 ```bash
 python3 -m venv .venv
@@ -67,6 +85,13 @@ Options: `-m/--mode {T2VA,I2VA,FL2VA,L2VA,R2V}`, `-o/--out DIR`, `--style TEXT`,
 The run prints a budget summary (total duration, characters) and lint warnings.
 
 Web wizard (requires the `web` extra):
+
+```bash
+./run_web.sh        # verifies the venv/extra, then launches the wizard
+```
+
+The script fails fast with the exact install command if the `web` extra is
+missing. Manual equivalent:
 
 ```bash
 .venv/bin/streamlit run script2prompt/app/web.py
@@ -101,6 +126,8 @@ script2prompt/
   __main__.py  CLI entry point
 tests/       stdlib unittest suite
 samples/     sample screenplays
+install.sh   venv setup + optional-extras installer
+run_web.sh   check the venv, then launch the web wizard
 ```
 
 ## Tests
