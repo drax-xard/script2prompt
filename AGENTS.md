@@ -57,3 +57,17 @@
 - No commits unless asked. `CHANGELOG.md` (Keep a Changelog + SemVer):
   record every behavior/dependency change under `Unreleased`.
 - Don't create `*.md` files unprompted; `PROJECT_PLAN.md` is the design doc.
+
+## Releases
+
+- **Every new version gets a source archive** for the GitHub release, built from
+  the release commit (tag) with `git archive`, so only tracked files are
+  included (no `.venv/`, `out/`, `build/`):
+  ```
+  git archive --format=zip --prefix=Script2Prompt-vX.Y.Z/ \
+    -o releases/Script2Prompt-vX.Y.Z.zip vX.Y.Z
+  ```
+  The archive extracts to a top-level `Script2Prompt-vX.Y.Z/` folder.
+  `releases/*.zip` is git-ignored — upload it to the GitHub release manually.
+- Verify the archive is self-contained (extract to a temp dir and run
+  `.venv/bin/python -m unittest discover -s tests`) before uploading.
