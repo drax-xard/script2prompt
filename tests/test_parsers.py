@@ -75,6 +75,19 @@ class TestFountain(unittest.TestCase):
         (el,) = fountain.parse("EXT. ROOFTOP - NIGHT\n")
         self.assertEqual((el.kind, el.text), ("heading", "EXT. ROOFTOP - NIGHT"))
 
+    def test_slugline_inside_dialogue_is_dialogue(self) -> None:
+        # Matches the plain-text parser: context is not reset mid-dialogue.
+        text = "@MARA\nI went to the old house.\nINT. OLD HOUSE - NIGHT\nIt was empty.\n"
+        self.assertEqual(
+            [(e.kind, e.text) for e in fountain.parse(text)],
+            [
+                ("character", "@MARA"),
+                ("dialogue", "I went to the old house."),
+                ("dialogue", "INT. OLD HOUSE - NIGHT"),
+                ("dialogue", "It was empty."),
+            ],
+        )
+
 
 FDX = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <FinalDraft DocumentType="Script" Version="5">
@@ -186,6 +199,13 @@ class TestDispatch(unittest.TestCase):
             self.assertEqual([e.kind for e in parse_file(fou)], ["character", "transition"])
             self.assertEqual(parse_file(fdx_path)[0].kind, "heading")
             self.assertEqual(parse_file(unknown)[0].kind, "heading")
+
+    def test_leading_bom_is_stripped(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bom.txt"
+            path.write_bytes("\ufeffINT. A - DAY\n\nMARA\nHi.\n".encode("utf-8"))
+            elements = parse_file(path)
+        self.assertEqual((elements[0].kind, elements[0].text), ("heading", "INT. A - DAY"))
 
 
 if __name__ == "__main__":

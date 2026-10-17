@@ -7,6 +7,7 @@ import unittest
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 from script2prompt import __main__ as cli
 from script2prompt.core import chunker, config, h3_builder, scenes, validator
@@ -58,6 +59,13 @@ class TestVoiceover(unittest.TestCase):
         self.assertIn("says in an off-screen voiceover:", prompt)
         self.assertIn("lips remain completely closed", prompt)
 
+    def test_voiceover_with_extra_parenthetical(self) -> None:
+        # (V.O.) followed by another marker must still read as a voiceover.
+        _, chunks = pipeline("INT. R - NIGHT\n\nMARA (V.O.) (CONT'D)\nI still remember.\n")
+        prompt = h3_builder.build(chunks[0])
+        self.assertIn("off-screen voiceover", prompt)
+        self.assertIn("lips remain completely closed", prompt)
+
     def test_off_screen_is_not_voiceover(self) -> None:
         _, chunks = pipeline("INT. R - NIGHT\n\nMARA (O.S.)\nI still remember.\n")
         prompt = h3_builder.build(chunks[0])
@@ -97,6 +105,21 @@ class TestTraits(unittest.TestCase):
         by_name = {c.name: c.description for c in build_bible(scenes.split(plaintext.parse(text)))}
         self.assertEqual(by_name["ELENA"], "40s, sharp editor")
         self.assertEqual(by_name["DANI"], "20s, nervous")
+
+    def test_joint_action_intro_is_split(self) -> None:
+        text = "INT. R - NIGHT\n\nMARA AND LEO (30s, siblings) enter together.\n\nMARA\nHi.\n"
+        by_name = {c.name: (c.speaker_id, c.description) for c in build_bible(scenes.split(plaintext.parse(text)))}
+        self.assertNotIn("MARA AND LEO", by_name)
+        # Both share the intro traits; only the speaker earns an ID.
+        self.assertEqual(by_name["MARA"], ("S1", "30s, siblings"))
+        self.assertEqual(by_name["LEO"], (None, "30s, siblings"))
+
+    def test_caps_mention_does_not_swallow_connector(self) -> None:
+        text = "INT. R - NIGHT\n\nThe ELENA AND MARA team regroups. ELENA speaks.\nELENA speaks.\n"
+        names = {c.name for c in build_bible(scenes.split(plaintext.parse(text)))}
+        self.assertNotIn("ELENA AND", names)
+        self.assertNotIn("AND", names)
+        self.assertIn("ELENA", names)
 
     def test_prop_parenthetical_is_not_a_character(self) -> None:
         text = "INT. N - NIGHT\n\nTHE SIGN (unreadable) glows.\n\nMARA\nHi.\n"
@@ -185,6 +208,11 @@ class TestConfigErrors(unittest.TestCase):
             with self.assertRaises(ValueError) as ctx:
                 config.load(bad, Path(tmp) / "missing.toml")
             self.assertIn("bad.toml", str(ctx.exception))
+
+    def test_invalid_env_number_is_friendly(self) -> None:
+        with mock.patch.dict("os.environ", {"S2P_TEMPERATURE": "hot"}), self.assertRaises(ValueError) as ctx:
+            config.load(Path("/missing.toml"), Path("/missing.toml"))
+        self.assertIn("S2P_TEMPERATURE", str(ctx.exception))
 
 
 class TestBinaryRejected(unittest.TestCase):

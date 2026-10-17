@@ -30,4 +30,5 @@ def parse_file(path: str | Path) -> list[Element]:
         raise ValueError(
             f"unsupported binary file: {p} (expected a text screenplay, .fdx, or .pdf)"
         )
-    return module.parse(raw.decode("utf-8", errors="replace"))
+    # utf-8-sig drops a leading BOM so a BOM'd file's first slugline still parses.
+    return module.parse(raw.decode("utf-8-sig", errors="replace"))

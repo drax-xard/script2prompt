@@ -13,7 +13,7 @@ from __future__ import annotations
 from . import fallback
 from .characters import Character, title
 from .ref_manifest import propose
-from .render import soundscape_sentences
+from .render import clean, soundscape_sentences
 
 
 def _definitions(manifest: dict) -> list[str]:
@@ -102,6 +102,7 @@ def build(chunk: dict, bible: list[Character] = (), manifest: dict | None = None
                 "angle on the ongoing action. The camera holds a static shot."
             )
         rendered.append(fallback._shot_text(shot["elements"], speakers, mentioned, opening, subject_labels))
+    style = clean(style) or "Live-action, cinematic"
     style_line = f"The target video uses a {style[:1].lower() + style[1:]} style, matching the scripted scene."
     description = f"{style_line}\n\n[Shot 1] {rendered[0]}" if rendered else f"{style_line}\n\n[Shot 1] ..."
     for extra in rendered[1:]:

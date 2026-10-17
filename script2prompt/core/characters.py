@@ -12,10 +12,18 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
-_ACTION_INTRO = re.compile(r"\b([A-Z][A-Z'\-]+(?:\s+[A-Z][A-Z'\-]+){0,2})\s*\(([^)]*)\)")
+# Action intro: NAME(S) with traits, allowing joint connectors ("MARA AND LEO",
+# "ELENA & MARA", "MARY JANE"). The names are split into individuals later.
+_ACTION_INTRO = re.compile(
+    r"\b([A-Z][A-Z'\-]+(?:(?:\s+AND\s+|\s*&\s*|\s+)[A-Z][A-Z'\-]+){0,3})\s*\(([^)]*)\)"
+)
 _TRAITS_LIKE = re.compile(r"[\d,]")
-_CAPS_NAME = re.compile(r"\b([A-Z](?:['\-]?[A-Z])+(?:\s+[A-Z](?:['\-]?[A-Z])+)?)\b")
-_NOISE = frozenset({"INT", "EXT", "EST", "CUT", "FADE", "TO"})
+# A multi-word caps name must not swallow a connector word ("ELENA AND").
+_CAPS_NAME = re.compile(
+    r"\b([A-Z](?:['\-]?[A-Z])+(?:\s+(?!(?:AND|OR|THE|AN|A)\b)[A-Z](?:['\-]?[A-Z])+)?)\b"
+)
+_STOP = frozenset({"AND", "OR", "THE", "AN", "A"})
+_NOISE = frozenset({"INT", "EXT", "EST", "CUT", "FADE", "TO"}) | _STOP
 # Joint speaker cue connectors (guide §4.4): "ELENA AND MARA", "ELENA & MARA",
 # "ELENA/MARA", "ELENA + MARA". Requires whole-word "and" so names like
 # "ALEXANDER" are not split.
@@ -50,9 +58,18 @@ def title(name: str) -> str:
 
     Capitalizes each alphabetic run so hyphenated and apostrophized names keep
     their interior capitals (``MARY-JANE`` -> ``Mary-Jane``, ``O'BRIEN`` ->
-    ``O'Brien``).
+    ``O'Brien``). Runs touching a digit are designators and are left as-is
+    (``C3PO`` stays ``C3PO``, not ``C3Po``).
     """
-    return re.sub(r"[A-Za-z]+", lambda m: m.group(0).capitalize(), name.lower())
+    def _cap(match: re.Match) -> str:
+        start, end = match.span()
+        before = name[start - 1] if start > 0 else ""
+        after = name[end] if end < len(name) else ""
+        if before.isdigit() or after.isdigit():
+            return match.group(0)
+        return match.group(0).capitalize()
+
+    return re.sub(r"[A-Za-z]+", _cap, name)
 
 
 def build_bible(scenes: list[dict]) -> list[Character]:
@@ -99,14 +116,18 @@ def build_bible(scenes: list[dict]) -> list[Character]:
                     # like "THE SIGN (unreadable)" are not mistaken for people.
                     if not intro or intro in _NOISE or not _TRAITS_LIKE.search(m.group(2)):
                         continue
-                    if intro not in traits:
-                        traits[intro] = m.group(2).strip()
-                    backed.add(intro)
-                    seen_note(intro)
+                    # A joint intro ("MARA AND LEO (30s)") names each character,
+                    # not one phantom "MARA AND LEO".
+                    for name in split_joint(intro) or [intro]:
+                        if name not in traits:
+                            traits[name] = m.group(2).strip()
+                        backed.add(name)
+                        seen_note(name)
                 for found in _CAPS_NAME.findall(text):
                     candidate = re.sub(r"\s+", " ", found).strip().upper()
-                    if candidate not in _NOISE:
-                        seen_note(candidate)
+                    for name in split_joint(candidate) or [candidate]:
+                        if name not in _NOISE:
+                            seen_note(name)
 
     order = [name for name in seen if name in backed or mentions[name] >= 2]
     bible = []

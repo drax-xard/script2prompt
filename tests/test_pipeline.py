@@ -93,6 +93,11 @@ class TestExport(unittest.TestCase):
         self.assertIn("subjects", ref["chunks"][0])
         self.assertIn("audios", ref["chunks"][0])
 
+    def test_t2va_reference_manifest_is_empty_not_an_error(self) -> None:
+        project = pipeline.run(parse_file(str(SAMPLE)), mode="T2VA")
+        ref = pipeline.reference_manifest(project)
+        self.assertEqual(ref, {"schema_version": pipeline.SCHEMA_VERSION, "mode": "T2VA", "chunks": []})
+
     def test_keyframe_picture_slots(self) -> None:
         elements = parse_file(str(SAMPLE))
         for mode, expected in (("I2VA", 1), ("FL2VA", 2), ("L2VA", 1)):

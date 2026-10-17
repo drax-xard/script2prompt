@@ -68,6 +68,11 @@ class TestTitleCasing(unittest.TestCase):
         self.assertEqual(title("O'BRIEN"), "O'Brien")
         self.assertEqual(title("MARY JANE"), "Mary Jane")
 
+    def test_alphanumeric_designator_preserved(self) -> None:
+        self.assertEqual(title("C3PO"), "C3PO")
+        self.assertEqual(title("R2D2"), "R2D2")
+        self.assertEqual(title("AGENT 47"), "Agent 47")
+
     def test_caps_apostrophe_name_is_detected(self) -> None:
         text = "INT. BAR - NIGHT\n\nO'BRIEN\nLast call.\n"
         names = {c.name for c in build_bible(scenes.split(plaintext.parse(text)))}

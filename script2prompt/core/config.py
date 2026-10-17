@@ -43,7 +43,16 @@ def load(path: str | Path = "config.toml", local_override: str | Path = "config.
     if os.environ.get("S2P_MODEL"):
         cfg["llm"]["model"] = os.environ["S2P_MODEL"]
     if os.environ.get("S2P_TEMPERATURE"):
-        cfg["llm"]["temperature"] = float(os.environ["S2P_TEMPERATURE"])
+        cfg["llm"]["temperature"] = _env_number("S2P_TEMPERATURE", float)
     if os.environ.get("S2P_TIMEOUT"):
-        cfg["llm"]["timeout"] = int(os.environ["S2P_TIMEOUT"])
+        cfg["llm"]["timeout"] = _env_number("S2P_TIMEOUT", int)
     return cfg
+
+
+def _env_number(name: str, cast):
+    """Parse an environment override with a friendly error naming the variable."""
+    raw = os.environ[name]
+    try:
+        return cast(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {name}: {raw!r} (expected a number)") from exc

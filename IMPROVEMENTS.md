@@ -189,6 +189,79 @@ base modes and `<Subject 1> and <Subject 2> (S1,S2)` for R2V — and
 Passing a scene (no `shots` key) instead of a chunk silently produces
 `[Shot 1] ...`. Consider asserting on `shots` presence for a clearer failure.
 
+### B16 — [FIXED] Medium: a leading UTF-8 BOM corrupts the first line
+
+`parsers/__init__.py` decoded with `errors="replace"` but never stripped a byte
+order mark, so a `.txt`/`.fountain` saved with a BOM had `\ufeff` glued to the
+first line — the opening slugline parsed as `action` and the scene lost its
+context.
+
+Fix: decode with `utf-8-sig`, which drops a leading BOM and otherwise behaves
+like `utf-8`.
+
+### B17 — [FIXED] Medium: R2V prompt for a wordless cold open had no subjects
+
+A chunk with no slugline and no characters (e.g. a wordless cold-open action
+beat) produced an empty `subject_definitions:` section, which the validator
+rejects (`defines no reference labels`).
+
+Fix: `ref_manifest.propose` synthesizes a placeholder `<Subject 1>` environment
+subject when nothing else is present, so the section is always well-formed.
+
+### B18 — [FIXED] Medium: voiceover missed when the cue had a second parenthetical
+
+`fallback._is_voiceover` stripped non-letters from the *whole* extension, so
+`MARA (V.O.) (CONT'D)` normalized to `VOCONTD` and no longer matched `VO` —
+the line was rendered as ordinary on-screen speech.
+
+Fix: normalize each parenthetical independently and test each token, so `(V.O.)`
+combined with `(CONT'D)`/`(O.S.)` still reads as a voiceover.
+
+### B19 — [FIXED] Medium: joint action intro / all-caps mention created phantom characters
+
+`MARA AND LEO (30s) enter together.` registered a single phantom character
+`MARA AND LEO` (and lost MARA/LEO's traits), and an all-caps action mention like
+`The ELENA AND MARA team…` produced a phantom `ELENA AND`.
+
+Fix: `_ACTION_INTRO` accepts `AND`/`&` connectors and the intro is split with
+`split_joint` (each part registered with the shared traits); `_CAPS_NAME` will
+not swallow connector words and `AND`/`OR`/`THE`/`A`/`AN` were added to `_NOISE`.
+
+### B20 — [FIXED] Low: `title()` mangled alphanumeric designators
+
+`C3PO` was titled `C3Po` because every alphabetic run was capitalized.
+
+Fix: `title()` leaves a letter run untouched when it touches a digit (`C3PO`,
+`R2D2` stay as written) while `MARY-JANE`/`O'BRIEN` still title-case.
+
+### B21 — [FIXED] Low: Fountain parser ignored dialogue state for headings
+
+Unlike `plaintext`, `fountain.py` still treated a slugline-looking line inside a
+dialogue block as a new heading. Fix: apply the same `not in_dialogue` guards
+(and exclude `_is_heading` lines from the cue check) so both parsers agree.
+
+### B22 — [FIXED] Low: invalid numeric env override raised a raw `ValueError`
+
+`S2P_TEMPERATURE=hot` produced a bare `could not convert string to float`. Fix:
+a helper wraps parsing with `invalid S2P_TEMPERATURE: 'hot' (expected a number)`.
+
+### B23 — [FIXED] Low: `pipeline.reference_manifest` raised for T2VA
+
+Calling it for a T2VA project raised `ValueError: no picture slots for mode:
+T2VA` (only `export_pack` guarded the call). Fix: T2VA now returns an empty
+checklist (`chunks: []`) instead of raising.
+
+### B24 — [FIXED] Low: R2V empty style produced a double space
+
+`r2v.build(style="")` emitted `uses a  style`. Fix: blank styles fall back to
+`Live-action, cinematic` after whitespace normalization.
+
+### B25 — [FIXED] Low (docs): `.spmd` documented as plain-text
+
+`parsers/__init__.py` maps `.spmd` to the Fountain parser (Fountain's original
+"Screenplay Markdown" extension), but `TESTING.md` listed it as plain-text. Fix:
+docs now group `.spmd` with `.fountain`.
+
 ---
 
 ## Improvements (robustness / design)
@@ -229,10 +302,11 @@ Passing a scene (no `shots` key) instead of a chunk silently produces
 
 ## Test gaps
 
-Addressed by `tests/test_hardening.py` (B1–B13/B15 regression tests, including
-B14 joint speakers) and by `tests/test_quality.py` + `tests/test_llm.py` for the
-0.10.0 work. `write_pack` clean/overwrite semantics are covered in
-`tests/test_pipeline.py`. No known open gaps.
+Addressed by `tests/test_hardening.py` (B1–B22 regression tests, including B14
+joint speakers and B16–B24 audit fixes), `tests/test_parsers.py` (B16/B21), and
+`tests/test_quality.py` + `tests/test_llm.py` for the 0.10.0 work. `write_pack`
+clean/overwrite semantics and the T2VA empty reference manifest (B23) are covered
+in `tests/test_pipeline.py`. No known open gaps.
 
 ## Tooling / repo hygiene
 
@@ -254,6 +328,10 @@ B14 joint speakers) and by `tests/test_quality.py` + `tests/test_llm.py` for the
 5. Improvements (shared helpers, `llm.chat` hardening, output quality). **Done (0.10.0).**
    CI + package metadata (scripts/URLs) **done (0.10.x)**.
 6. **B14** (compound speaker IDs). **Done (0.10.x)**.
+7. **B16–B25** (second deep audit: BOM, empty R2V subjects, voiceover
+   parentheticals, phantom joint names, `title()` designators, Fountain dialogue
+   state, env-error message, T2VA reference manifest, empty style, `.spmd`
+   docs). **Done.**
 
 ---
 

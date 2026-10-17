@@ -14,7 +14,7 @@ Versioning practices:
 - Each release gets a dated section below with `Added / Changed / Fixed / Removed` entries
   and (once published) a version tag `vX.Y.Z` plus a GitHub release.
 
-## [Unreleased]
+## [0.11.0] - 2026-10-17
 
 ### Added
 - `IMPROVEMENTS.md`: **Post-v1 roadmap (v2)** consolidating the agreed v2
@@ -54,13 +54,37 @@ Versioning practices:
 - `core/fallback.py`: the unsupported-mode error now explains that `build()`
   handles T2VA/I2VA/FL2VA/L2VA and R2V is built by `core/r2v.py` (the stale
   "arrives in Milestone 3" message is gone).
-- Docs: test-count references updated (124 → 139) in `PROJECT_PLAN.md` and
+- Docs: test-count references updated (124 → 149) in `PROJECT_PLAN.md` and
   `TESTING.md`; `README.md` documents `--clean`, the console entry point, and
   joint speakers.
+- `TESTING.md`: `.spmd` is listed with `.fountain` (the Fountain parser), not as
+  plain-text (`B25`).
+- Version `0.10.0` -> `0.11.0` (second deep-audit bug-fix release).
 
 ### Fixed
 - `validator._check_speakers`: compound speaker groups (`(S1,S2)`) are now
   checked ID-by-ID against the bible rather than only the first ID.
+- `parsers/__init__.py`: decode inputs as `utf-8-sig` so a leading UTF-8 BOM no
+  longer corrupts the first line (`B16`).
+- `ref_manifest.propose`: a wordless chunk with no slugline now synthesizes a
+  placeholder environment subject instead of emitting an empty
+  `subject_definitions` section that the validator rejects (`B17`).
+- `fallback._is_voiceover`: normalize each parenthetical independently so
+  `MARA (V.O.) (CONT'D)` (and `(V.O.) (O.S.)`) still render as a voiceover
+  (`B18`).
+- `characters.py`: joint action intros (`MARA AND LEO (30s)`) split into
+  individual characters that share the traits, and all-caps mentions no longer
+  swallow connectors (`ELENA AND`) (`B19`).
+- `characters.title`: alphanumeric designators keep their casing (`C3PO`,
+  `R2D2`) instead of becoming `C3Po`/`R2D2`-style mixed case (`B20`).
+- `parsers/fountain.py`: a slugline-looking line inside a dialogue block is kept
+  as dialogue (matching `plaintext`) (`B21`).
+- `config.load`: invalid numeric env overrides (`S2P_TEMPERATURE`/`S2P_TIMEOUT`)
+  raise a friendly error naming the variable (`B22`).
+- `pipeline.reference_manifest`: returns an empty checklist for T2VA instead of
+  raising `no picture slots for mode: T2VA` (`B23`).
+- `r2v.build`: a blank `style` falls back to `Live-action, cinematic` rather
+  than emitting `uses a  style` (`B24`).
 
 ## [0.10.0] - 2026-10-17
 
@@ -222,7 +246,8 @@ Versioning practices:
 - Config format `config.yaml` → `config.toml` (stdlib `tomllib`).
   `PROJECT_PLAN.md` documents the dependency use policy (§3.2).
 
-[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.11.0
 [0.10.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.10.0
 [0.9.1]: https://github.com/drax-xard/script2prompt/releases/tag/v0.9.1
 [0.9.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.9.0

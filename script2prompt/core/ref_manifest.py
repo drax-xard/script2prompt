@@ -127,6 +127,23 @@ def propose(chunk: dict, bible: list[Character] = ()) -> dict:
                 "source": "placeholder — attach a character reference image",
             }
         )
+    if not subjects:
+        # No slugline and no characters (e.g. a wordless cold open). The guide
+        # still expects <Subject 1> to be the environment, so synthesize one
+        # rather than emitting an empty subject_definitions section.
+        shots = _subject_shots(chunk, None)
+        subjects.append(
+            {
+                "label": "<Subject 1>",
+                "kind": "environment",
+                "name": "on-screen setting",
+                "description": "",
+                "speaker_id": None,
+                "shots": shots,
+                "shots_text": _fmt_shots(shots),
+                "source": "placeholder — attach an environment reference image",
+            }
+        )
     by_name = {s["name"]: s["label"] for s in subjects if s["kind"] == "character"}
     audios: list[dict] = []
     for char in sorted(

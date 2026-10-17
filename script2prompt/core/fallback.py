@@ -21,15 +21,17 @@ from .render import clean, finish, soundscape_sentences
 def _is_voiceover(extension: str, delivery: str) -> bool:
     """True only for a real voiceover (V.O.), not off-screen (O.S./O.C.).
 
-    The extension and delivery are checked independently so a parenthetical
-    like ``MARA (V.O.)`` + ``(softly)`` is still a voiceover, while ``(O.S.)``
-    is left as an on-screen-but-unseen speaker rather than a closed-lips one.
+    The extension and delivery are checked independently, and each
+    parenthetical is normalized on its own, so ``(V.O.)`` combined with an extra
+    marker (``MARA (V.O.) (CONT'D)``) is still a voiceover, while ``(O.S.)`` is
+    left as an on-screen-but-unseen speaker rather than a closed-lips one.
     """
-    tokens = {
-        re.sub(r"[^A-Z]", "", extension.upper()),
-        re.sub(r"[^A-Z]", "", delivery.upper()),
-    }
-    return bool(tokens & {"VO", "VOICEOVER"})
+    tokens = set()
+    for parenthetical in (extension, delivery):
+        tokens.update(re.findall(r"\(([^)]*)\)", parenthetical))
+        tokens.add(parenthetical)
+    normalized = {re.sub(r"[^A-Z]", "", token.upper()) for token in tokens}
+    return bool(normalized & {"VO", "VOICEOVER"})
 
 
 def _speaker_head(name: str, char: Character | None, mentioned: set[str],

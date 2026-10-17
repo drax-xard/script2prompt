@@ -202,7 +202,13 @@ def manifest(project: Project) -> dict:
 
 
 def reference_manifest(project: Project) -> dict:
-    """Mode-aware reference checklist (non-T2VA modes)."""
+    """Mode-aware reference checklist (non-T2VA modes).
+
+    T2VA needs no references, so it returns an empty checklist instead of
+    raising (``export_pack`` already skips the file for T2VA).
+    """
+    if project.mode == "T2VA":
+        return {"schema_version": SCHEMA_VERSION, "mode": "T2VA", "chunks": []}
     chunks = []
     for res in project.results:
         final_shot = max(len(res.chunk["shots"]), 1)

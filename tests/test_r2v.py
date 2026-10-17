@@ -42,6 +42,19 @@ class TestManifest(unittest.TestCase):
         self.assertEqual(manifest["videos"], [])
         self.assertEqual(manifest["task_types"], ["reference generation", "audio reference"])
 
+    def test_wordless_cold_open_gets_environment_subject(self) -> None:
+        parsed = plaintext.parse("A lone car speeds down an empty highway at dawn.\n")
+        found = scenes.split(parsed)
+        bible = build_bible(found)
+        chunks = [c for s in found for c in chunker.chunk(s, bible)]
+        manifest = propose(chunks[0], bible)
+        self.assertEqual(
+            [(s["label"], s["kind"]) for s in manifest["subjects"]],
+            [("<Subject 1>", "environment")],
+        )
+        prompt = h3_builder.build(chunks[0], bible, mode="R2V")
+        self.assertEqual(validator.validate(prompt, mode="R2V", duration=chunks[0]["duration"]), [])
+
 
 class TestR2VBuild(unittest.TestCase):
     def test_six_sections_in_order(self) -> None:
@@ -71,6 +84,13 @@ class TestR2VBuild(unittest.TestCase):
         prompt = h3_builder.build(chunks[0], bible, mode="R2V")
         shot_one = prompt.split("detailed_description:")[1].split("overall_soundscape:")[0]
         self.assertIn("The camera", shot_one)
+
+    def test_empty_style_falls_back(self) -> None:
+        from script2prompt.core import r2v
+
+        bible, chunks = setup()
+        prompt = r2v.build(chunks[0], bible, style="")
+        self.assertIn("uses a live-action, cinematic style", prompt)
 
     def test_audio_order_is_numeric(self) -> None:
         from script2prompt.core.characters import Character

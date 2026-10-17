@@ -39,13 +39,13 @@ def parse(text: str) -> list[Element]:
         elif line.startswith(">") and len(line) > 1:
             elements.append(Element("transition", line[1:].strip(), {"line": lineno}))
             in_dialogue = False
-        elif plaintext._is_heading(line):
+        elif plaintext._is_heading(line) and not in_dialogue:
             elements.append(Element("heading", line, {"line": lineno}))
             in_dialogue = False
-        elif plaintext._is_transition(line):
+        elif plaintext._is_transition(line) and not in_dialogue:
             elements.append(Element("transition", line, {"line": lineno}))
             in_dialogue = False
-        elif plaintext._looks_like_cue(line, next_line):
+        elif plaintext._looks_like_cue(line, next_line) and not plaintext._is_heading(line):
             name, ext = plaintext.normalize_cue(line)
             elements.append(
                 Element("character", line, {"name": name, "extension": ext, "line": lineno})

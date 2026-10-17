@@ -40,7 +40,7 @@ Optional extras (only if you need them):
 .venv/bin/python -m unittest discover -s tests
 ```
 
-Expected: `Ran 139 tests ... OK`. If this fails, stop here — the environment is
+Expected: `Ran 149 tests ... OK`. If this fails, stop here — the environment is
 not set up correctly and the rest of the guide will not be meaningful.
 
 Optional lint check (needs the `dev` extra):
@@ -152,8 +152,8 @@ Point the tool at any file:
 
 Supported inputs:
 
-- `.txt` / `.text` / `.spmd` – plain-text screenplay heuristics.
-- `.fountain` – Fountain subset (`.Heading`, `@Character`, `> Transition`).
+- `.txt` / `.text` – plain-text screenplay heuristics.
+- `.fountain` / `.spmd` – Fountain subset (`.Heading`, `@Character`, `> Transition`).
 - `.fdx` – Final Draft XML.
 - `.pdf` – extract text, then parse (requires `.[pdf]`).
 
