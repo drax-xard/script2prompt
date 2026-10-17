@@ -40,7 +40,7 @@ Optional extras (only if you need them):
 .venv/bin/python -m unittest discover -s tests
 ```
 
-Expected: `Ran 124 tests ... OK`. If this fails, stop here — the environment is
+Expected: `Ran 139 tests ... OK`. If this fails, stop here — the environment is
 not set up correctly and the rest of the guide will not be meaningful.
 
 Optional lint check (needs the `dev` extra):
@@ -123,6 +123,7 @@ What to look for:
 | `--shots` | max shots per chunk (clamped to 1–3) |
 | `--config` | alternate config file (default: `config.toml`) |
 | `--llm` | rewrite prompts via the configured OpenAI-compatible endpoint |
+| `--clean` | remove stale pack files before writing the export |
 | `--strict` | exit non-zero if there is any lint warning |
 
 Examples:

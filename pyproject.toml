@@ -2,13 +2,34 @@
 name = "script2prompt"
 version = "0.10.0"
 description = "Translate movie scripts/screenplays into Minimax H3 video prompts"
+readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
+keywords = ["screenplay", "minimax", "h3", "video", "prompt", "llm"]
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Text Processing :: Markup",
 ]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/drax-xard/script2prompt"
+Repository = "https://github.com/drax-xard/script2prompt"
+Issues = "https://github.com/drax-xard/script2prompt/issues"
+Changelog = "https://github.com/drax-xard/script2prompt/blob/main/CHANGELOG.md"
+
+[project.scripts]
+script2prompt = "script2prompt.__main__:main"
 
 [project.optional-dependencies]
 pdf = ["pypdf>=4.0"]

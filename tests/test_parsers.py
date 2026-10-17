@@ -47,6 +47,19 @@ class TestPlaintext(unittest.TestCase):
         kinds = [e.kind for e in elements]
         self.assertEqual(kinds, ["character", "dialogue", "action"])
 
+    def test_slugline_inside_dialogue_is_dialogue(self) -> None:
+        text = "MARA\nI went to the old house.\nINT. OLD HOUSE - NIGHT\nIt was empty.\n"
+        elements = plaintext.parse(text)
+        self.assertEqual(
+            [(e.kind, e.text) for e in elements],
+            [
+                ("character", "MARA"),
+                ("dialogue", "I went to the old house."),
+                ("dialogue", "INT. OLD HOUSE - NIGHT"),
+                ("dialogue", "It was empty."),
+            ],
+        )
+
 
 class TestFountain(unittest.TestCase):
     def test_forced_markers(self) -> None:

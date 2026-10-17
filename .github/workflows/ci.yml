@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: unittest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install (core only)
+        run: pip install -e .
+      - name: Run unittest suite
+        run: python -m unittest discover -s tests
+
+  zero-dep-import:
+    name: zero-dependency import check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (core only)
+        run: pip install -e .
+      - name: Core imports must not pull third-party packages
+        run: |
+          python - <<'PY'
+          import importlib
+          import pkgutil
+          import sys
+
+          import script2prompt
+
+          for info in pkgutil.walk_packages(
+              script2prompt.__path__, prefix=script2prompt.__name__ + "."
+          ):
+              importlib.import_module(info.name)
+
+          forbidden = {"pypdf", "streamlit", "ruff"}
+          loaded = forbidden & set(sys.modules)
+          if loaded:
+              raise SystemExit(f"lazy optional imported by core: {sorted(loaded)}")
+          print("core imported with no third-party modules loaded")
+          PY
+
+  optional-extras:
+    name: optional extras (pdf, web, dev)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install all extras
+        run: pip install -e ".[pdf,web,dev]"
+      - name: Run unittest suite
+        run: python -m unittest discover -s tests
+      - name: Ruff lint
+        run: ruff check .

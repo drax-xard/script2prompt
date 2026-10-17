@@ -83,13 +83,16 @@ def parse(text: str) -> list[Element]:
             in_dialogue = False
             continue
         next_line = lines[lineno].strip() if lineno < len(lines) else ""
-        if _is_heading(line):
+        # A slugline-looking line inside a dialogue block is spoken text, not a
+        # new scene heading (a real heading follows a blank line, which ends the
+        # block). Outside a block, headings/transitions keep precedence.
+        if _is_heading(line) and not in_dialogue:
             elements.append(Element("heading", line, {"line": lineno}))
             in_dialogue = False
-        elif _is_transition(line):
+        elif _is_transition(line) and not in_dialogue:
             elements.append(Element("transition", line, {"line": lineno}))
             in_dialogue = False
-        elif _looks_like_cue(line, next_line):
+        elif _looks_like_cue(line, next_line) and not _is_heading(line):
             name, ext = normalize_cue(line)
             elements.append(
                 Element("character", line, {"name": name, "extension": ext, "line": lineno})

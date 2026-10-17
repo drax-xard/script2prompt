@@ -7,14 +7,17 @@ pipeline across all five modes and malformed inputs.
 Severity: **High** = wrong output on common input, **Medium** = wrong output on
 realistic input, **Low** = edge case / robustness / polish.
 
-Status: **B1–B13 and B15 are fixed** (see `tests/test_hardening.py`, 19 new
-regression tests). **B14** (compound speaker IDs) remains open as a feature.
-The bug entries are kept as a record of the issue and the fix applied.
+Status: **B1–B15 are fixed** (see `tests/test_hardening.py`, plus the 0.10.x
+regression tests). **B14** (compound speaker IDs) landed as a feature. The bug
+entries are kept as a record of the issue and the fix applied.
 
 The 0.10.0 milestone (see `CHANGELOG.md`) also resolved several items from the
 "Improvements" list below (shared soundscape helper, `llm.chat` hardening,
 environment naming, name casing, long-action splitting, tiny-chunk merging);
 those entries are marked **[DONE 0.10.0]**.
+
+For the forward-looking, post-v1 plan (Project Manager, ComfyUI, Settings,
+desktop bundle, built-in LLM), see **Post-v1 roadmap (v2)** near the end.
 
 ---
 
@@ -169,10 +172,17 @@ screenplay openers become action lines. Add `FADE IN`/`FADE OUT`/`SMASH CUT` etc
 `script2prompt/parsers/plaintext.py:13`. `PROJECT_PLAN.md` §4.1 lists `EST.`.
 Add it to the heading pattern.
 
-### B14 — [OPEN] Low: compound speaker IDs (`S1,S2`) unsupported
+### B14 — [FIXED] Low: compound speaker IDs (`S1,S2`) unsupported
 
 The guide (§4.4) defines joint speakers; `characters.py`/`fallback.py` only
-handle single IDs. Affects chorus/overlap lines.
+handled single IDs. Affected chorus/overlap lines.
+
+Fix: `characters.split_joint` splits a joint cue (`ELENA AND MARA`, also `&`,
+`/`, `+`) into individual names, which `build_bible` registers as separate
+characters (each with its own `Sx`) and `_make_chunk` records as speakers. The
+renderers emit a compound head — `Elena and Mara (S1,S2) say <d>…</d>.` for the
+base modes and `<Subject 1> and <Subject 2> (S1,S2)` for R2V — and
+`validator._check_speakers` now validates every ID in the group.
 
 ### B15 — [FIXED] Low: `h3_builder.build` given a scene dict yields a degenerate prompt
 
@@ -201,31 +211,34 @@ Passing a scene (no `shots` key) instead of a chunk silently produces
 - **[DONE 0.10.0] Min-duration behavior.** A sub-5s trailing chunk merges into
   its predecessor when the pair fits the cap; the 5s floor applies only to a
   chunk that stands alone.
-- **Package metadata.** Add `[project.scripts]` (`script2prompt = "script2prompt.__main__:main"`),
-  project URLs, and classifiers to `pyproject.toml`.
-- **Manifest versioning.** Add `schema_version` to `manifest.json` /
-  `reference_manifest.json` for forward compatibility.
-- **`write_pack` overwrite/clean option** and return a manifest of written files.
-- **`web.py` testability.** It is untestable without Streamlit installed; move
-  bible-editing and pack assembly into `pipeline`/pure helpers and cache the
-  parsed file across reruns.
-- **`plaintext` inline headings.** Also consider that `plaintext` cannot
-  currently distinguish a slugline from dialogue without dialogue-state context.
+- **[DONE 0.10.x] Package metadata.** `[project.scripts]`
+  (`script2prompt = "script2prompt.__main__:main"`), project URLs, readme,
+  keywords, and Python 3.11–3.14 classifiers added to `pyproject.toml`.
+- **[DONE 0.10.x] Manifest versioning.** `manifest.json` /
+  `reference_manifest.json` stamp `schema_version` (`pipeline.SCHEMA_VERSION`),
+  with `migrate_artifact`/`load_artifact` for forward-compatible loading.
+- **[DONE 0.10.x] `write_pack` clean/overwrite option** (`clean=True`, CLI
+  `--clean`) and it returns the list of written files.
+- **`web.py` testability** (still open; a v2 prerequisite). It is untestable
+  without Streamlit installed; move bible-editing and pack assembly into
+  `pipeline`/pure helpers and cache the parsed file across reruns.
+- **[DONE 0.10.x] `plaintext` inline headings.** A slugline-looking line inside
+  a dialogue block is now kept as dialogue using dialogue-state context.
 
 ---
 
 ## Test gaps
 
-Addressed by `tests/test_hardening.py` (19 tests) for B1–B13/B15 and by
-`tests/test_quality.py` + `tests/test_llm.py` for the 0.10.0 work. Still open:
-
-- No test for `write_pack` clean/overwrite semantics (feature not implemented).
+Addressed by `tests/test_hardening.py` (B1–B13/B15 regression tests, including
+B14 joint speakers) and by `tests/test_quality.py` + `tests/test_llm.py` for the
+0.10.0 work. `write_pack` clean/overwrite semantics are covered in
+`tests/test_pipeline.py`. No known open gaps.
 
 ## Tooling / repo hygiene
 
-- **No CI.** Add GitHub Actions running `.venv/bin/python -m unittest discover -s tests`
-  on 3.11–3.13, plus a zero-dependency import check and an optional-extras job.
-  **Still open** (deferred to a 0.10.x follow-up).
+- **[DONE 0.10.x] CI.** `.github/workflows/ci.yml` runs
+  `.venv/bin/python -m unittest discover -s tests` on Python 3.11–3.14, plus a
+  zero-dependency import check and an optional-extras job (pdf/web/dev + ruff).
 - **[DONE 0.10.0] `LICENSE`** — GPL-3.0-or-later.
 - **[DONE] `README.md`** — project overview, install/usage, config, layout.
 - **[DONE 0.10.0] Linter config** — `ruff` via the `dev` extra + `[tool.ruff]`.
@@ -239,5 +252,253 @@ Addressed by `tests/test_hardening.py` (19 tests) for B1–B13/B15 and by
 3. **B5, B6, B7, B12, B13** (parser correctness). **Done.**
 4. **B8, B9, B10, B11, B15** (robustness). **Done.**
 5. Improvements (shared helpers, `llm.chat` hardening, output quality). **Done (0.10.0).**
-   CI + package metadata (scripts/URLs) remain open.
-6. **B14** (compound speaker IDs). **Open** (feature, not a defect).
+   CI + package metadata (scripts/URLs) **done (0.10.x)**.
+6. **B14** (compound speaker IDs). **Done (0.10.x)**.
+
+---
+
+## Post-v1 roadmap (v2)
+
+Forward-looking design record. Nothing here is implemented yet; it captures the
+agreed direction after the v1 audit. v1 = `0.10.0` and prior.
+
+### Decisions (locked)
+
+1. **Audience first:** power users already running their own ComfyUI and a
+   `llama.cpp`-compatible server. One-click/non-technical packaging is a later
+   concern, after the framework stabilizes.
+2. **Generation backend:** target **ComfyUI's** HTTP pipeline directly.
+3. **Dependency stance:** the zero-required-deps core stays the *default*, but it
+   is a directive ("avoid dependency abuse"), **not a fanatical hard rule**. A
+   `1.0` "desktop bundle" that ships heavier optionals is acceptable.
+4. **Scope order:** Project Manager → ComfyUI → everything else
+   (Settings/Options, desktop bundle, built-in LLM).
+5. **Project persistence:** the Project Manager stores the **raw source inside the
+   bundle** (portable, heavier) — not just a path + hash reference.
+
+### Prerequisites (do before v2 features)
+
+The moment state is persisted, these become load-bearing; both are already
+flagged above.
+
+- **[DONE for `manifest.json` / `reference_manifest.json`]** `schema_version`
+  with forward-compatible loaders and migrations (`pipeline.SCHEMA_VERSION`,
+  `migrate_artifact`, `load_artifact`). The project file will reuse the same
+  helper. (`IMPROVEMENTS.md` "Improvements".)
+- **Single source of truth for H3 rules** — extract a `core/h3_spec.py` holding
+  the camera vocabulary, cut verbs, language tags, section labels, retention
+  markers, budgets (5–10s, ≤3 shots, 7000-char cap). Kills the drift risk between
+  `core/prompts.py` (prose) and `core/validator.py` (constants); Settings can
+  display it read-only and gate overrides.
+- **Stable chunk IDs** — `"{scene_index}:{first_element_index}-{last_element_index}"`
+  so manual edits survive re-parse; a source-hash change marks stale chunks
+  instead of discarding work.
+- **Testable state layer** — all Project Manager / library / ComfyUI logic lives
+  in `core/` (stdlib `unittest`), never in `app/web.py` (currently untestable
+  without Streamlit).
+
+---
+
+### 1. Project Manager — **priority 1**
+
+**Problem.** `pipeline.run()` (`core/pipeline.py:57`) is a one-shot pure function;
+its result only lives in `st.session_state` (`app/web.py:87`), keyed by a file
+fingerprint. A 120-page script is ~100–150 scenes and **well over 1000 chunks** —
+no persistence, no resumability, no edits that survive a rerun.
+
+**Shape.** New UI-agnostic `core/workspace.py` + `core/library.py`, UI on top.
+Persistence uses stdlib `json` + `zipfile` (single `.s2p` bundle), so it does not
+violate the dependency stance.
+
+**Data model.** Project = directory or single `.s2p` zip:
+
+- `project.json` — `schema_version`, meta, embedded `source/` (raw script +
+  `sha256` + format), settings, status rollups.
+- `bible/characters.json` — extend `Character` (`core/characters.py:21`) with
+  voice description, aliases, reference image/audio paths, per-scene appearance.
+- `bible/locations.json` — the Setting/Location bible (below).
+- `bible/props.json` — `<Subject N>` objects, `<Video N>` sources (R2V slots
+  already exist in `core/ref_manifest.py`).
+- `bible/palettes.json` — Color Palette presets.
+- `bible/continuity.json` — costumes, injuries, weather, time progression.
+- `chunks/NNN.json` — `{stable_id, scene, element_range, mode_override, status,
+  prompt, prompt_history[], issues[], references{}, generation{}}`.
+- `assets/` — imported reference images/audio, or pointers into a global library.
+
+**Features required to be *great*, not merely "save/load":**
+
+- **Deterministic re-parse + diff.** Re-parse the embedded source on load and
+  diff against stored chunks; stable IDs preserve edits; source-hash change flags
+  stale chunks.
+- **Per-chunk lifecycle:** `draft → edited → approved → exported → generated`.
+  Regenerate only *dirty* chunks — the key to 1000-chunk tractability.
+- **Revision history per chunk** with A/B variants and revert; record origin
+  (`template` / `llm` / `manual` / `llm-retry`) on each revision.
+- **Autosave + crash recovery.**
+- **Location bible (high value).** Reuse `ref_manifest.slugline_parts()`
+  (`core/ref_manifest.py:26`) and the scene `context` from `core/scenes.py:`;
+  map `INT. WAREHOUSE` → canonical entity (description, style notes, reference
+  images, time-of-day variants) and inject its description as the environment
+  block (the R2V `<Subject 1>` path at `ref_manifest.py:98`). This is exactly the
+  "parser logically replaces EXT/INT sections with the appropriate descriptions"
+  goal.
+- **Prop/object bible** — completes R2V subjects.
+- **Continuity bible** — gives the chunker's continuity carry-over a home.
+- **Aliases/nicknames** — `Bobby`/`ROBERT`/`Bob` collapse to one subject so the
+  bible and speaker IDs do not fragment.
+- **Cross-project library** (`~/.config/script2prompt/library/`) — reusable
+  characters, locations, palettes, voices, and (later) ComfyUI workflow
+  templates; enables a consistent "universe".
+- **Per-scene/per-context overrides** — this is the reserved
+  `chunk.mode_override` v2 hook (`PROJECT_PLAN.md:13`, `AGENTS.md:43`): different
+  modes/params for a dialogue scene vs. an action montage without locking the
+  whole project to one mode.
+- **Named strategies/presets** — bundles of (mode, duration, shots, style,
+  palette, chunking) applied per scene or project-wide.
+- **Search/filter** by character, location, status, lint warning, over-budget.
+- **Dashboard** — total runtime estimate, budget coverage, reference-asset
+  completion checklist, unapproved-chunk count.
+- **Batch ops** — regenerate all warning/over-budget chunks; apply a global style
+  change while *locking* approved chunks; promote a draft strategy.
+- **Color Palette presets.** H3 has no negative prompts and style is a standalone
+  opening sentence, so palettes are *textual* preset descriptions
+  (`TEAL/ORANGE`, `DESATURATED KODAK`) named, saved, and composed into the style
+  sentence.
+
+**Effort:** L–XL. **Priority: 1.**
+
+---
+
+### 2. ComfyUI integration — **priority 2**
+
+**Goal.** Close the loop from generated prompt → rendered video, and make the
+reference manifest concrete. ComfyUI exposes an HTTP API (`/prompt`, `/queue`,
+`/history/{id}`, `/view`, `/upload/image`); workflows are JSON graphs. Integrate
+with stdlib `urllib` (mirror `core/llm.py`), **no new hard dependency**.
+
+- **`core/comfy.py`** (optional, off by default): `comfyui.base_url`; submit one
+  prompt per approved chunk; poll for completion; fetch output via `/view`.
+- **Robust placeholder convention** — never hardcode node IDs (they drift with
+  custom nodes). Mark the input node (e.g. `_meta.title == "S2P_PROMPT"`) and
+  substitute the prompt; validate the workflow before submit; provide an
+  import/mapping UI.
+- **Reference substitution** — upload/link the concrete slots already emitted by
+  `ref_manifest.picture_slots` / `propose` (I2VA/FL2VA/L2VA images, R2V
+  subject/picture/video/audio) via `/upload/image`. The reference manifest stops
+  being a checklist and becomes real inputs; the Project Manager asset library
+  supplies the bytes.
+- **Two quality tiers** — model "draft" (few steps, low res, short) and
+  "production" (full steps/res) as **two workflow templates** plus a per-run
+  toggle. Approve a draft, then promote the same chunk to production. (Just two
+  JSONs + parameters.)
+- **Batch/queue** — enqueue the full approved set for an overnight draft pass;
+  monitor, cancel, retry per chunk.
+- **Provenance & iteration loop** — store seed, workflow hash, model, prompt
+  hash, and output per generation; land results back in the Project Manager as
+  per-chunk previews. This closes the draft → review → production loop with #1.
+
+**Effort:** M–L. **Priority: 2.**
+
+---
+
+### 3. Settings/Options page — priority 3
+
+Low-risk, high-value; pairs with #1.
+
+- **Layered precedence, surfaced in the UI:** built-in defaults < global user
+  config < project config < per-session. Today: `config.toml` <
+  `config.local.toml` < env (`core/config.py:26`); extend to include the project
+  file.
+- **Validation + ranges** (`duration` 5–10, `shots` 1–3, temperature bounds);
+  some already clamped in `pipeline.run` (`core/pipeline.py:61`).
+- **"Test connection"** button echoing model/latency from the OpenAI-compatible
+  endpoint (`core/llm.py`), plus a clear offline-fallback indicator.
+- **Secrets discipline** — keys come from **env only**, never persisted in
+  project files. (Only `base_url` exists today; keep it that way.)
+- **H3 tag/video definitions** — expose `core/h3_spec.py` **read-only**, with
+  advanced overrides gated behind a warning (free-editing tags can invalidate
+  `core/validator.py`).
+- Export/import settings; reset to defaults.
+
+**Effort:** M.
+
+---
+
+### 4. Desktop bundle — priority 4
+
+The target "own window, no browser dependency" is only *fully* satisfiable by
+bundling Chromium, which we will **not** do.
+
+| Option | Deps | Own window? | Verdict |
+|---|---|---|---|
+| As-is | none | no (system browser) | Zero cost; works via `run_web.sh` |
+| **`pywebview`** | optional `desktop` extra | yes | **Recommended** — wraps OS WebView (WebKitGTK / Edge WebView2 / WKWebView); still needs `webkit2gtk` on Linux |
+| Bundled Chromium (CEF / Qt WebEngine) | 100s of MB, per-OS, Qt licensing | yes | **Rejected** — "dependency abuse" |
+| stdlib `webbrowser.open()` | none | "sort of" | Trivial auto-open; degrades to default browser |
+| stdlib `http.server` + hand-rolled HTML/JS | none | via pywebview | Principled, enables a true zero-Streamlit desktop app — but rewrites `app/web.py` (XL) |
+| Electron/Tauri | non-Python | yes | Out of scope |
+
+**Plan:** add `pywebview` as an optional `desktop` extra (lazy import, same
+pattern as `streamlit`) with automatic fallback to `webbrowser` /
+`streamlit run`. Optionally plan the stdlib-server rewrite for `1.0`, which also
+removes Streamlit's telemetry and testability drawbacks. Be explicit to users:
+WebView wrappers are *not* more compatible than a browser.
+
+**Effort:** S (pywebview wiring) / XL (stdlib-server rewrite). Ships with `1.0`.
+
+---
+
+### 5. Built-in LLM inference engine — priority 5
+
+Keep the current OpenAI-compatible HTTP path (`core/llm.py`) as the **primary**
+path. If a "built-in" engine is wanted:
+
+| Option | Verdict |
+|---|---|
+| **Bundle `llama-server` as a managed sidecar** | **Recommended** — reuses `core/llm.py` **unchanged** (OpenAI-compatible), any GGUF, GPU handled by the binary, clean process boundary. Do **not** bundle weights; download on demand with checksum |
+| `llama-cpp-python` (in-process GGUF) | Risky — native build (CMake/compiler), per-platform wheels, GPU special indexes |
+| `ctransformers` | Avoid (unmaintained) |
+| `transformers`/torch | Avoid (multi-GB stack) |
+| Managed Ollama sidecar | Fine stopgap |
+
+Settings panel: start/stop, model selection, GPU offload/context. Set
+expectations: chunk rewriting is short-prose work, so a 7B-Q4 model is ample —
+this is a *convenience*, not a quality upgrade over a running server.
+
+**Effort:** M (sidecar manager) / L (packaging).
+
+---
+
+### Later (not v2): story/book → screenplay
+
+Turn a non-screenplay story/book into an industry-standard screenplay using a
+parser + LLM, then feed that screenplay into the existing Script2Prompt pipeline —
+offering an end-to-end "prose → audiovisual product" flow. Explicitly **out of
+scope for v2**; recorded here only as a direction. Revisit once the Project
+Manager and ComfyUI loop are stable.
+
+---
+
+### Sequencing summary
+
+1. Prereqs: `schema_version`, stable chunk IDs, `core/h3_spec.py`, testable
+   state layer.
+2. **Project Manager** (core persistence + per-chunk state + layered bibles).
+3. **ComfyUI** (workflow templates, reference substitution, draft/production
+   queue).
+4. **Settings/Options** page.
+5. **Desktop bundle** at `1.0` (`pywebview` extra; optional stdlib-server
+   rewrite).
+6. **Built-in LLM** (`llama-server` sidecar).
+7. Later: story/book → screenplay.
+
+### Risks
+
+- **Project Manager** — state-management complexity and schema migrations; ship
+  `schema_version` from day one.
+- **ComfyUI** — workflow JSON drift across custom-node/version changes; mitigate
+  with the `_meta.title` placeholder convention and pre-submit validation.
+- **Desktop/LLM** — packaging per-OS (WebView deps, GPU binaries, model size);
+  keep off by default and download on demand.
+- **Release model** — #4/#5 turn this into a distributed desktop app and likely
+  warrant a `1.0` milestone (today `releases/*.zip` is source-only).

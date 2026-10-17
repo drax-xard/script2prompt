@@ -12,7 +12,7 @@ import re
 
 from script2prompt.parsers.base import Element
 
-from .characters import Character, title
+from .characters import Character, split_joint, title
 from .chunker import split_sentences
 from .modes import instruction_line
 from .render import clean, finish, soundscape_sentences
@@ -57,7 +57,33 @@ def _speaker_head(name: str, char: Character | None, mentioned: set[str],
     return f"{base} ({sid})" if sid else base
 
 
-def _render_dialogue(words: str, head: str, voiceover: bool, mark: str) -> str:
+def _joint_head(names: list[str], speakers: dict[str, Character], mentioned: set[str],
+                subject_labels: dict[str, str] | None = None) -> str:
+    """Compound speaker head for a joint cue, e.g. ``Elena and Mara (S1,S2)``."""
+    chars = [speakers.get(name) for name in names]
+    ids = [c.speaker_id for c in chars if c and c.speaker_id]
+    labels = [(subject_labels or {}).get(name) for name in names]
+    first = [name for name in names if name not in mentioned]
+    if subject_labels and all(labels):
+        head = " and ".join(labels)
+        if first:
+            head += f", {' and '.join(title(name) for name in names)}"
+    else:
+        parts = []
+        for name in names:
+            char = speakers.get(name)
+            if name in first and char and char.description:
+                parts.append(f"{title(name)}, {char.description}")
+            else:
+                parts.append(title(name))
+        head = " and ".join(parts)
+    for name in names:
+        mentioned.add(name)
+    return f"{head} ({','.join(ids)})" if ids else head
+
+
+def _render_dialogue(words: str, head: str, voiceover: bool, mark: str,
+                     plural: bool = False) -> str:
     # Plain form matches Example_Text2Video_Prompt.txt: no colon after "says",
     # no space after the language tag, terminal period outside </d>.
     # Voiceover keeps the guide's fixed phrase (with colon).
@@ -65,7 +91,7 @@ def _render_dialogue(words: str, head: str, voiceover: bool, mark: str) -> str:
     if voiceover:
         line = f"{head} says in an off-screen voiceover: {tag} {head}'s lips remain completely closed."
     else:
-        line = f"{head} says {tag}"
+        line = f"{head} {'say' if plural else 'says'} {tag}"
     if mark in ("out", "both"):
         line += " <scenetrans> The line continues seamlessly across the cut."
     if mark in ("in", "both"):
@@ -86,12 +112,20 @@ def _shot_text(elements: list[Element], speakers: dict[str, Character],
         elif el.kind == "parenthetical":
             delivery = el.text.strip().strip("()").strip()
         elif el.kind == "dialogue":
-            name = cue.meta.get("name", "") if cue else ""
+            raw = cue.meta.get("name", "") if cue else ""
             ext = cue.meta.get("extension", "") if cue else ""
-            char = speakers.get(name) if name else None
-            head = _speaker_head(name, char, mentioned, subject_labels) if name else "An unseen speaker"
+            joint = split_joint(raw)
+            if len(joint) > 1:
+                head = _joint_head(joint, speakers, mentioned, subject_labels)
+            elif raw:
+                head = _speaker_head(raw, speakers.get(raw), mentioned, subject_labels)
+            else:
+                head = "An unseen speaker"
             parts.append(
-                _render_dialogue(el.text, head, _is_voiceover(ext, delivery), el.meta.get("scenetrans", ""))
+                _render_dialogue(
+                    el.text, head, _is_voiceover(ext, delivery),
+                    el.meta.get("scenetrans", ""), plural=len(joint) > 1,
+                )
             )
             delivery = ""
         elif el.kind == "action":
@@ -142,7 +176,10 @@ def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
           style: str = "Live-action, cinematic") -> str:
     """Build a deterministic prompt for a chunk (T2VA/I2VA/FL2VA/L2VA)."""
     if mode not in ("T2VA", "I2VA", "FL2VA", "L2VA"):
-        raise NotImplementedError(f"{mode} builder arrives in Milestone 3")
+        raise NotImplementedError(
+            f"fallback.build handles T2VA/I2VA/FL2VA/L2VA only; "
+            f"{mode} is built by core.r2v.build"
+        )
     speakers = chunk.get("speakers", {})
     context = clean(chunk.get("context", ""))
     shots = chunk.get("shots", [])

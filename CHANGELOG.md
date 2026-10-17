@@ -16,6 +16,52 @@ Versioning practices:
 
 ## [Unreleased]
 
+### Added
+- `IMPROVEMENTS.md`: **Post-v1 roadmap (v2)** consolidating the agreed v2
+  direction — Project Manager (persisted, chunk-addressable projects with
+  location/prop/continuity bibles), ComfyUI pipeline integration
+  (draft/production workflows), Settings/Options page, `pywebview` desktop
+  bundle, and a `llama-server` sidecar engine, plus prerequisites
+  (`schema_version`, stable chunk IDs, `core/h3_spec.py`) and the later
+  story/book → screenplay direction.
+- `next-steps.md`: handoff notes for the next session (status snapshot, loose
+  ends, blocking prerequisites, locked v2 decisions, verification commands).
+- **Joint (compound) speaker IDs** (`B14`, guide §4.4): a cue like
+  `ELENA AND MARA` (also `&`, `/`, `+`) now splits into individual bible entries
+  and renders a compound ID — `Elena and Mara (S1,S2) say <d>…</d>.`
+  (`characters.split_joint`, used by `build_bible`, `chunker`, `fallback`,
+  `ref_manifest`); the validator now checks every ID in a compound group.
+- `pyproject.toml`: `[project.scripts]` entry point (`script2prompt`), project
+  URLs, `readme`, keywords, and Python 3.11–3.14 classifiers.
+- `.github/workflows/ci.yml`: unittest matrix on Python 3.11–3.14, a
+  zero-dependency import check, and an optional-extras job (pdf/web/dev + ruff).
+- `pipeline.write_pack(..., clean=True)` and a CLI `--clean` flag: stale pack
+  files (fixed export names + `chunk_*.txt`) are removed before writing.
+- `schema_version` on persisted artifacts: `manifest.json` and
+  `reference_manifest.json` now stamp `pipeline.SCHEMA_VERSION` (1). New
+  `pipeline.migrate_artifact` / `pipeline.load_artifact` upgrade pre-versioning
+  artifacts (missing field = version 0) through registered `_MIGRATIONS` and
+  pass newer versions through untouched, so an older loader cannot corrupt a
+  newer writer's output. First slice of the v2 persistence prerequisites.
+
+### Changed
+- Dependency policy docs (`AGENTS.md`, `PROJECT_PLAN.md` §3.2) now state the
+  locked v2 stance explicitly: zero-dep core is the *default and a directive*,
+  not a fanatical rule; a `1.0` desktop bundle may add heavier **optional**
+  extras while core stays dependency-free.
+- `parsers/plaintext.py`: a slugline-looking line inside a dialogue block is now
+  kept as dialogue instead of ending the scene (dialogue-state context).
+- `core/fallback.py`: the unsupported-mode error now explains that `build()`
+  handles T2VA/I2VA/FL2VA/L2VA and R2V is built by `core/r2v.py` (the stale
+  "arrives in Milestone 3" message is gone).
+- Docs: test-count references updated (124 → 139) in `PROJECT_PLAN.md` and
+  `TESTING.md`; `README.md` documents `--clean`, the console entry point, and
+  joint speakers.
+
+### Fixed
+- `validator._check_speakers`: compound speaker groups (`(S1,S2)`) are now
+  checked ID-by-ID against the bible rather than only the first ID.
+
 ## [0.10.0] - 2026-10-17
 
 ### Added

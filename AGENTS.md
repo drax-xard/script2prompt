@@ -9,15 +9,21 @@
 
 ## Dependencies
 
-- Core has **zero required third-party deps** (stdlib: `dataclasses`, `tomllib`,
-  `urllib.request`, `unittest`, `xml.etree`). Keep it that way.
+- Core keeps **zero required third-party deps** (stdlib: `dataclasses`, `tomllib`,
+  `urllib.request`, `unittest`, `xml.etree`). This is the *default* and a directive
+  ("avoid dependency abuse"), **not an absolute hard rule** — see the locked v2
+  decision in `IMPROVEMENTS.md`. A `1.0` desktop bundle may add heavier
+  **optional** extras (`pywebview`, a managed `llama-server` sidecar, `.s2p` zip
+  bundles) as long as core stays dependency-free.
 - Optionals are lazy-imported inside functions, never at module top level:
   `pypdf` in `parsers/pdf.py` (`.[pdf]`), `streamlit` in `app/web.py` (`.[web]`).
   Missing-extra errors must name the exact install command.
 - `dev` extra (`ruff`) is tooling only (`.venv/bin/ruff check .`) — never imported
   by the package.
-- Rejected (don't reintroduce): `pydantic`, `pyyaml`, `openai` SDK, `pytest`,
-  `pdfplumber`, `fastapi`. Rationale in `PROJECT_PLAN.md` §3.2.
+- Rejected so far (rationale in `PROJECT_PLAN.md` §3.2): `pydantic`, `pyyaml`,
+  `openai` SDK, `pytest`, `pdfplumber`, `fastapi`. Bundled Chromium/CEF is also
+  rejected (dependency abuse). Rejected entries are not a blanket ban on *any*
+  new optional extra — evaluate each against the directive above.
 
 ## Config
 

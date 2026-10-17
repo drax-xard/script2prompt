@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-from .characters import Character, title
+from .characters import Character, split_joint, title
 
 TIMBRE_ROLE = "voice-timbre reference"
 
@@ -44,7 +44,10 @@ def _subject_shots(chunk: dict, name: str | None) -> list[int]:
     found = []
     for i, shot in enumerate(chunk.get("shots", []), start=1):
         for el in shot["elements"]:
-            if el.kind == "character" and el.meta.get("name") == name:
+            if el.kind != "character":
+                continue
+            raw = el.meta.get("name", "")
+            if raw == name or name in split_joint(raw):
                 found.append(i)
                 break
     return found

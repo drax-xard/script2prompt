@@ -15,7 +15,7 @@ import re
 
 from script2prompt.parsers.base import Element
 
-from .characters import Character
+from .characters import Character, split_joint
 
 CAP_SECONDS = 10.0
 MIN_SECONDS = 5.0
@@ -166,9 +166,10 @@ def _make_chunk(scene: dict, elements: list[Element], by_name: dict[str, Charact
     speakers: dict[str, Character] = {}
     for el in elements:
         if el.kind == "character":
-            name = el.meta.get("name", "")
-            if name and name not in speakers:
-                speakers[name] = by_name.get(name, Character(name, None, ""))
+            raw = el.meta.get("name", "")
+            for name in split_joint(raw) or ([raw] if raw else []):
+                if name and name not in speakers:
+                    speakers[name] = by_name.get(name, Character(name, None, ""))
     return {
         "context": scene.get("context", ""),
         "elements": elements,

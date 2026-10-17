@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,41 @@ from . import chunker, h3_builder, ref_manifest, validator
 from . import scenes as scenes_mod
 from .characters import Character, build_bible, title
 from .modes import instruction_line
+
+# Schema version stamped on every persisted artifact (manifest.json,
+# reference_manifest.json; the future .s2p project file). Bump on any
+# incompatible shape change and register the migration below.
+SCHEMA_VERSION = 1
+
+# version -> callable(data) -> data. Version 0 is "written before versioning":
+# the shape was already compatible, so the migration is the identity and only
+# stamps the version. Add real transforms as 1->2, 2->3, ... when shapes change.
+_MIGRATIONS: dict[int, Callable[[dict], dict]] = {0: lambda artifact: artifact}
+
+
+def migrate_artifact(data: dict) -> dict:
+    """Bring a loaded artifact up to ``SCHEMA_VERSION`` (forward-compatible).
+
+    Missing ``schema_version`` means a pre-versioning artifact (version 0) and
+    is upgraded through the registered migrations. An artifact from a *newer*
+    writer is returned unchanged rather than corrupted.
+    """
+    version = data.get("schema_version", 0)
+    if not isinstance(version, int) or isinstance(version, bool):
+        raise ValueError(f"invalid schema_version: {version!r}")
+    while version < SCHEMA_VERSION:
+        migration = _MIGRATIONS.get(version)
+        if migration is None:
+            break
+        data = migration(data)
+        version += 1
+    data["schema_version"] = version
+    return data
+
+
+def load_artifact(path: str | Path) -> dict:
+    """Load a JSON export artifact and migrate it to the current schema."""
+    return migrate_artifact(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
 @dataclass
@@ -137,6 +173,7 @@ def prompts_markdown(project: Project) -> str:
 
 def manifest(project: Project) -> dict:
     return {
+        "schema_version": SCHEMA_VERSION,
         "mode": project.mode,
         "duration_target": project.duration,
         "shots_max": project.shots_max,
@@ -180,7 +217,7 @@ def reference_manifest(project: Project) -> dict:
         else:
             entry["pictures"] = ref_manifest.picture_slots(project.mode, final_shot)
         chunks.append(entry)
-    return {"mode": project.mode, "chunks": chunks}
+    return {"schema_version": SCHEMA_VERSION, "mode": project.mode, "chunks": chunks}
 
 
 def export_pack(project: Project) -> dict[str, str]:
@@ -199,12 +236,25 @@ def export_pack(project: Project) -> dict[str, str]:
     return pack
 
 
-def write_pack(project: Project, out_dir: str | Path) -> list[str]:
-    """Write the export pack to ``out_dir``; return the filenames written."""
+_PACK_FIXED = ("prompts.md", "manifest.json", "reference_manifest.json", "characters.md")
+
+
+def write_pack(project: Project, out_dir: str | Path, *, clean: bool = False) -> list[str]:
+    """Write the export pack to ``out_dir``; return the filenames written.
+
+    With ``clean=True``, stale artifacts from a previous pack in the same
+    directory (the fixed export names and ``chunk_*.txt``) are removed before
+    writing, so re-running a smaller project does not leave orphaned files.
+    """
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
+    pack = export_pack(project)
+    if clean:
+        stale = set(_PACK_FIXED) | {p.name for p in out.glob("chunk_*.txt")}
+        for name in sorted(stale):
+            (out / name).unlink(missing_ok=True)
     written: list[str] = []
-    for name, content in export_pack(project).items():
+    for name, content in pack.items():
         (out / name).write_text(content, encoding="utf-8")
         written.append(name)
     return written

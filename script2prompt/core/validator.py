@@ -119,9 +119,10 @@ def _check_speakers(text: str, bible: list | None = None) -> list[str]:
         issues.append("dialogue attributed to an unseen speaker (missing character cue)")
     if bible is not None:
         valid = {c.speaker_id for c in bible if c.speaker_id}
-        for sid in re.findall(r"\(S(\d+)(?:,S\d+)*\)", text):
-            if f"S{sid}" not in valid:
-                issues.append(f"speaker ID S{sid} not in the character bible")
+        for group in re.findall(r"\(S\d+(?:,S\d+)*\)", text):
+            for sid in group.strip("()").split(","):
+                if sid not in valid:
+                    issues.append(f"speaker ID {sid} not in the character bible")
     return issues
 
 

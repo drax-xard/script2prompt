@@ -16,6 +16,10 @@ _ACTION_INTRO = re.compile(r"\b([A-Z][A-Z'\-]+(?:\s+[A-Z][A-Z'\-]+){0,2})\s*\(([
 _TRAITS_LIKE = re.compile(r"[\d,]")
 _CAPS_NAME = re.compile(r"\b([A-Z](?:['\-]?[A-Z])+(?:\s+[A-Z](?:['\-]?[A-Z])+)?)\b")
 _NOISE = frozenset({"INT", "EXT", "EST", "CUT", "FADE", "TO"})
+# Joint speaker cue connectors (guide §4.4): "ELENA AND MARA", "ELENA & MARA",
+# "ELENA/MARA", "ELENA + MARA". Requires whole-word "and" so names like
+# "ALEXANDER" are not split.
+_JOINT = re.compile(r"\s*(?:/|&|\+|\band\b)\s*", re.IGNORECASE)
 
 
 @dataclass
@@ -23,6 +27,22 @@ class Character:
     name: str  # normalized cue form, e.g. "MARY JANE"
     speaker_id: str | None  # S1.. for vocal characters, None otherwise
     description: str  # traits from action intro, "" when unknown
+
+
+def split_joint(name: str) -> list[str]:
+    """Split a joint speaker cue into individual names (guide §4.4).
+
+    Returns an empty list for an ordinary single-name cue, so callers fall back
+    to the whole name. The connector is dropped and each part upper-cased:
+    ``"ELENA AND MARA"`` -> ``["ELENA", "MARA"]``. Every part must be at least
+    two characters so an ampersand inside a single name (``AT&T``) is not split.
+    """
+    if not name:
+        return []
+    parts = [p.strip().upper() for p in _JOINT.split(name) if p.strip()]
+    if len(parts) > 1 and all(len(p) >= 2 for p in parts):
+        return parts
+    return []
 
 
 def title(name: str) -> str:
@@ -47,7 +67,7 @@ def build_bible(scenes: list[dict]) -> list[Character]:
     traits: dict[str, str] = {}
     vocal_pos: dict[str, int] = {}
     backed: set[str] = set()
-    last_cue: str | None = None
+    last_cue: list[str] = []
 
     def seen_note(name: str) -> None:
         if not name:
@@ -57,17 +77,19 @@ def build_bible(scenes: list[dict]) -> list[Character]:
             seen.append(name)
 
     for scene in scenes:
-        last_cue = None
+        last_cue = []
         for el in scene["elements"]:
             if el.kind == "character":
-                name = el.meta.get("name", "")
-                seen_note(name)
-                if name:
+                raw = el.meta.get("name", "")
+                names = split_joint(raw) or ([raw] if raw else [])
+                for name in names:
+                    seen_note(name)
                     backed.add(name)
-                last_cue = name or None
+                last_cue = names
             elif el.kind == "dialogue":
-                if last_cue and last_cue not in vocal_pos:
-                    vocal_pos[last_cue] = len(vocal_pos)
+                for name in last_cue:
+                    if name and name not in vocal_pos:
+                        vocal_pos[name] = len(vocal_pos)
             elif el.kind == "action":
                 text = el.text.strip()
                 for m in _ACTION_INTRO.finditer(text):

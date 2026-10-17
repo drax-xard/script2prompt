@@ -126,6 +126,8 @@ script2prompt/
 2. **Stdlib first; zero required third-party deps.** Core (Milestones 1–4) installs
    nothing: models are `@dataclass`, validation is hand-written, tests use `unittest`,
    config uses `tomllib`, FDX uses `xml.etree`, LLM calls use `urllib.request`.
+   This is the **default and a directive** ("avoid dependency abuse"), not an
+   absolute prohibition — see item 5.
 3. **A new external package is allowed only when** (a) the problem is not reasonably
    solvable with stdlib (e.g. PDF text extraction), or (b) the user explicitly
    chooses a heavy tool for iteration speed (Streamlit for the web wizard).
@@ -136,8 +138,15 @@ script2prompt/
      rejected (Streamlit chosen for v1).
    - `dev = ["ruff>=0.6"]` — lint tooling only; never imported by the package and
      not required to run or test it.
-5. **Rejected:** `pydantic` (dataclasses suffice), `pyyaml` (moved to TOML),
-   `openai` SDK (urllib POST suffices), `pytest` (unittest suffices).
+5. **Rejected so far:** `pydantic` (dataclasses suffice), `pyyaml` (moved to
+   TOML), `openai` SDK (urllib POST suffices), `pytest` (unittest suffices),
+   `pdfplumber` (pypdf suffices), `fastapi/uvicorn` (Streamlit chosen for v1),
+   bundled Chromium/CEF (dependency abuse). These are per-case decisions, not a
+   blanket ban: the zero-dep core is a **directive, not a fanatical rule** (locked
+   v2 decision in `IMPROVEMENTS.md` § *Decisions*). A `1.0` desktop bundle may add
+   heavier **optional** extras — `pywebview` (`desktop`), a managed `llama-server`
+   sidecar, `.s2p` zip bundles — provided the core stays dependency-free and the
+   extras remain lazy-imported.
 6. **Record every dependency decision** here and in `CHANGELOG.md` under `Unreleased`.
 
 ---
@@ -168,7 +177,7 @@ script2prompt/
 
 ---
 
-## 6. Milestones (status: milestones 1–8 done, 124 tests green)
+## 6. Milestones (status: milestones 1–8 done, 139 tests green)
 
 1. ✅ Offline core: parsers (txt/fountain) + scenes + bible + chunker + T2VA builder/validator + tests. *Done (`35c17c7`).*
 2. ✅ Mode layer: `modes.py` + I2VA/FL2VA/L2VA instruction lines + body shapes + per-mode validation. *Done (`72fedda`).*

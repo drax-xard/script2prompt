@@ -29,6 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--shots", type=int, help="max shots per chunk override (1-3)")
     parser.add_argument("--config", help="config file to load (default: config.toml)")
     parser.add_argument("--llm", action="store_true", help="rewrite prompts via the LLM endpoint")
+    parser.add_argument("--clean", action="store_true", help="remove stale pack files before writing")
     parser.add_argument("--strict", action="store_true", help="exit non-zero if any lint warning")
     args = parser.parse_args(argv)
 
@@ -43,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
         elements, mode=mode, duration=duration, shots_max=shots, style=style,
         rewrite=llm.rewrite if args.llm else None,
     )
-    written = pipeline.write_pack(project, args.out)
+    written = pipeline.write_pack(project, args.out, clean=args.clean)
 
     summary = pipeline.budgets(project)
     warnings = pipeline.lint(project)

@@ -16,7 +16,8 @@ a minor bump until 1.0. See [`CHANGELOG.md`](CHANGELOG.md) for history and
 - **Parsers:** plain text, Fountain, Final Draft (`.fdx`), PDF (`.pdf`).
 - **Scene splitter:** cuts on `INT./EXT.`/`EST.` sluglines, carrying location/time context.
 - **Character bible:** stable speaker IDs (`S1`, `S2`, …) in first-vocalization
-  order, with descriptions captured from `NAME (traits)` action intros.
+  order, with descriptions captured from `NAME (traits)` action intros; joint
+  cues (`ELENA AND MARA`) render a compound ID `(S1,S2)`.
 - **Chunker:** greedy packing with a speech/action duration estimate, capped at
   10s and 3 shots; long monologues split with `<scenetrans>` markers.
 - **Builders + validator:** deterministic templates by default, optional LLM
@@ -84,8 +85,12 @@ CLI (deterministic templates by default; `--llm` opt-in):
 
 Options: `-m/--mode {T2VA,I2VA,FL2VA,L2VA,R2V}`, `-o/--out DIR`, `--style TEXT`,
 `--duration SECONDS`, `--shots N` (max shots per chunk, 1-3), `--config PATH`
-(alternate config file), `--llm`, `--strict` (exit non-zero on any lint warning).
-The run prints a budget summary (total duration, characters) and lint warnings.
+(alternate config file), `--llm`, `--clean` (remove stale pack files before
+writing), `--strict` (exit non-zero on any lint warning). The run prints a budget
+summary (total duration, characters) and lint warnings.
+
+After an editable install a `script2prompt` console command is available as a
+shortcut for `python -m script2prompt`.
 
 Web wizard (requires the `web` extra):
 

@@ -132,6 +132,45 @@ class TestValidatorSpeakers(unittest.TestCase):
         self.assertEqual(validator.validate(good, bible=bible), [])
 
 
+class TestJointSpeakers(unittest.TestCase):
+    def test_compound_id_and_separate_bible_entries(self) -> None:
+        text = (
+            "INT. R - DAY\n\n"
+            "MARA\nHello.\n\n"
+            "LEO\nHi.\n\n"
+            "MARA AND LEO\nTogether then.\n"
+        )
+        bible, chunks = pipeline(text)
+        ids = {c.name: c.speaker_id for c in bible}
+        self.assertEqual(ids, {"MARA": "S1", "LEO": "S2"})
+        prompt = h3_builder.build(chunks[0], bible)
+        self.assertIn("Mara and Leo (S1,S2) say <d>[English]Together then.</d>.", prompt)
+        self.assertNotIn("unseen speaker", prompt.lower())
+
+    def test_joint_first_appearance_assigns_ids(self) -> None:
+        bible, chunks = pipeline("INT. R - DAY\n\nELENA & MARA\nWe agree.\n")
+        self.assertEqual({c.name: c.speaker_id for c in bible}, {"ELENA": "S1", "MARA": "S2"})
+        self.assertIn("Elena and Mara (S1,S2) say", h3_builder.build(chunks[0], bible))
+
+    def test_and_inside_name_not_split(self) -> None:
+        from script2prompt.core.characters import split_joint
+
+        self.assertEqual(split_joint("ALEXANDER"), [])
+        self.assertEqual(split_joint("SANDRA"), [])
+        self.assertEqual(split_joint("AT&T"), [])
+        self.assertEqual(split_joint("ELENA AND MARA"), ["ELENA", "MARA"])
+
+    def test_validator_checks_every_compound_id(self) -> None:
+        prompt = (
+            "integrated_multimodal_description:\nLive-action, cinematic.\n"
+            "[Shot 1] A room. Mara and Leo (S1,S9) say <d>[English]Hi.</d>.\n\n"
+            "overall_soundscape:\nRoom tone.\n\nnon_diegetic_music:\nN/A"
+        )
+        bible = [Character("MARA", "S1", ""), Character("LEO", "S2", "")]
+        issues = validator.validate(prompt, bible=bible)
+        self.assertTrue(any("S9" in issue for issue in issues), issues)
+
+
 class TestBuildGuard(unittest.TestCase):
     def test_scene_input_raises(self) -> None:
         with self.assertRaises(ValueError):

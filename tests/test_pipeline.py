@@ -53,6 +53,37 @@ class TestExport(unittest.TestCase):
         self.assertEqual(len(manifest["chunks"]), len(project.results))
         self.assertEqual(manifest["chunks"][0]["speakers"], {"ELENA": "S1"})
 
+    def test_artifacts_carry_schema_version(self) -> None:
+        for mode in ("T2VA", "R2V"):
+            project = pipeline.run(parse_file(str(SAMPLE)), mode=mode)
+            self.assertEqual(pipeline.manifest(project)["schema_version"], pipeline.SCHEMA_VERSION)
+        r2v = pipeline.run(parse_file(str(SAMPLE)), mode="R2V")
+        self.assertEqual(
+            pipeline.reference_manifest(r2v)["schema_version"], pipeline.SCHEMA_VERSION
+        )
+
+    def test_legacy_artifact_is_migrated(self) -> None:
+        legacy = {"mode": "T2VA", "chunks": []}
+        migrated = pipeline.migrate_artifact(legacy)
+        self.assertEqual(migrated["schema_version"], pipeline.SCHEMA_VERSION)
+
+    def test_future_artifact_is_left_untouched(self) -> None:
+        future = {"schema_version": 999, "mode": "T2VA", "chunks": []}
+        self.assertEqual(pipeline.migrate_artifact(future)["schema_version"], 999)
+
+    def test_invalid_schema_version_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            pipeline.migrate_artifact({"schema_version": "one"})
+
+    def test_load_artifact_round_trips(self) -> None:
+        project = pipeline.run(parse_file(str(SAMPLE)), mode="T2VA")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "manifest.json"
+            out.write_text(json.dumps(pipeline.manifest(project)), encoding="utf-8")
+            loaded = pipeline.load_artifact(out)
+            self.assertEqual(loaded["schema_version"], pipeline.SCHEMA_VERSION)
+            self.assertEqual(loaded["mode"], "T2VA")
+
     def test_non_t2va_pack_has_reference_manifest(self) -> None:
         project = pipeline.run(parse_file(str(SAMPLE)), mode="R2V")
         pack = pipeline.export_pack(project)
@@ -75,6 +106,28 @@ class TestExport(unittest.TestCase):
             written = pipeline.write_pack(project, tmp)
             for name in written:
                 self.assertTrue((Path(tmp) / name).is_file(), name)
+
+    def test_write_pack_clean_removes_stale_pack_files(self) -> None:
+        project = pipeline.run(parse_file(str(SAMPLE)), mode="T2VA")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "chunk_99.txt").write_text("stale\n", encoding="utf-8")
+            (out / "manifest.json").write_text("stale\n", encoding="utf-8")
+            (out / "keep_me.txt").write_text("mine\n", encoding="utf-8")
+            written = pipeline.write_pack(project, out, clean=True)
+            self.assertFalse((out / "chunk_99.txt").exists())
+            self.assertTrue((out / "keep_me.txt").is_file())
+            self.assertTrue((out / "manifest.json").is_file())
+            for name in written:
+                self.assertTrue((out / name).is_file(), name)
+
+    def test_write_pack_without_clean_keeps_stale_files(self) -> None:
+        project = pipeline.run(parse_file(str(SAMPLE)), mode="T2VA")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "chunk_99.txt").write_text("stale\n", encoding="utf-8")
+            pipeline.write_pack(project, out)
+            self.assertTrue((out / "chunk_99.txt").is_file())
 
 
 class TestInputs(unittest.TestCase):
