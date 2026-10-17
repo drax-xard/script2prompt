@@ -26,7 +26,8 @@ def main() -> None:
         ) from exc
 
     from script2prompt.core import config as config_mod
-    from script2prompt.core import llm, pipeline, scenes as scenes_mod
+    from script2prompt.core import llm, pipeline
+    from script2prompt.core import scenes as scenes_mod
     from script2prompt.core.characters import Character, build_bible, title
     from script2prompt.core.modes import MODES
 
@@ -40,6 +41,7 @@ def main() -> None:
         st.info("Upload a screenplay (.txt, .fountain, .fdx, .pdf) to begin.")
         return
 
+    fingerprint = f"{uploaded.name}:{uploaded.size}"
     elements = pipeline.parse_bytes(uploaded.getvalue(), uploaded.name)
     found = scenes_mod.split(elements)
 
@@ -74,12 +76,16 @@ def main() -> None:
             bible.append(Character(name.upper(), sid or None, desc))
 
     if not st.button("Generate prompts", type="primary"):
-        return
-
-    project = pipeline.run(
-        elements, mode=mode, duration=duration, shots_max=shots_max,
-        style=style, bible=bible, rewrite=llm.rewrite if use_llm else None,
-    )
+        project = st.session_state.get("project")
+        if project is None or st.session_state.get("fingerprint") != fingerprint:
+            return
+    else:
+        project = pipeline.run(
+            elements, mode=mode, duration=duration, shots_max=shots_max,
+            style=style, bible=bible, rewrite=llm.rewrite if use_llm else None,
+        )
+        st.session_state["project"] = project
+        st.session_state["fingerprint"] = fingerprint
 
     warnings = pipeline.lint(project)
     summary = pipeline.budgets(project)
@@ -106,14 +112,14 @@ def main() -> None:
         st.success("Lint: no warnings")
 
     for res in project.results:
-        st.markdown(f"### Chunk {res.index} — {mode} ({res.chunk['duration']:.2f}s)")
+        st.markdown(f"### Chunk {res.index} — {project.mode} ({res.chunk['duration']:.2f}s)")
         if res.scene:
             st.caption(f"Scene: {res.scene}")
         if res.issues:
             st.error("; ".join(res.issues))
         st.code(res.prompt, language="text")
 
-    if mode != "T2VA":
+    if project.mode != "T2VA":
         st.subheader("Reference manifest")
         st.json(pipeline.reference_manifest(project))
 
@@ -123,7 +129,7 @@ def main() -> None:
         st.download_button(f"Download {name}", content, file_name=name)
     if st.button("Write pack to ./out"):
         written = pipeline.write_pack(project, "out")
-        st.success(f"Wrote {len(written)} files to ./out")
+        st.success(f"Wrote {len(written)} files to ./out: {', '.join(written)}")
 
 
 if __name__ == "__main__":

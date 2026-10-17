@@ -1,15 +1,16 @@
 """H3 prompt assembly: LLM rewrite primary, rule-based templates as fallback.
 
 Call ``build`` with a ``rewrite`` callable (e.g. ``llm.rewrite``) to use the
-LLM. The model's text is returned when non-empty; any raised error, empty
-result, or omitted callable falls back to the deterministic ``fallback``/``r2v``
-builders (Milestones 1-3), so generation never hard-fails offline.
+LLM. The model's text is returned when non-empty; an ``LLMError``, empty result,
+or omitted callable falls back to the deterministic ``fallback``/``r2v``
+builders (Milestones 1-3), so generation never hard-fails offline. Unexpected
+exceptions from a custom ``rewrite`` propagate instead of being swallowed.
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
-from . import fallback, r2v
+from . import fallback, llm, r2v
 from .characters import Character
 
 Rewrite = Callable[..., str]
@@ -32,7 +33,7 @@ def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
     if rewrite is not None:
         try:
             text = rewrite(chunk, bible, mode=mode, style=style)
-        except Exception:  # offline / bad endpoint / malformed response: use template
+        except llm.LLMError:  # offline / bad endpoint / malformed response: use template
             text = ""
         if text and text.strip():
             return text.strip()

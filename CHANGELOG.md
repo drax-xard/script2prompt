@@ -16,6 +16,49 @@ Versioning practices:
 
 ## [Unreleased]
 
+### Added
+- `install.sh` now explains Streamlit's default telemetry collection and, when
+  the `web` extra is chosen and the shell is interactive, offers to write
+  `[browser] gatherUsageStats = false` to `~/.streamlit/config.toml` (preserving
+  existing content, and flipping an existing `gatherUsageStats = true`).
+
+### Fixed
+- Web wizard: the "Write pack to ./out" button exported nothing because the
+  generated project lived in a local variable that did not survive Streamlit's
+  rerun. The project is now cached in `st.session_state` (keyed by the uploaded
+  file's name/size), so the write step works; a new upload invalidates it.
+
+## [0.10.0] - 2026-10-17
+
+### Added
+- `core/render.py`: shared prose helpers (`clean`, `finish`, `soundscape_sentences`)
+  now used by both `fallback` and `r2v` (removes duplicated soundscape logic).
+- `core/llm.py`: `LLMError` raised for unreachable endpoints, non-2xx responses,
+  and malformed payloads; `max_tokens`/`timeout`/`retries` settings with
+  exponential backoff on transient failures (5xx / network / timeout).
+- `config.toml` `[llm] max_tokens`, `timeout`, `retries` keys; `S2P_TEMPERATURE`
+  and `S2P_TIMEOUT` environment overrides in `core/config.py`.
+- `pyproject.toml` `dev` extra (`ruff`) with `[tool.ruff]` lint config.
+- `LICENSE` (GPL-3.0-or-later) with matching `pyproject.toml` metadata.
+
+### Changed
+- `core/chunker.py`: long action beats are split at sentence boundaries instead
+  of being clamped to one chunk; a sub-5s trailing chunk merges into its
+  predecessor when the pair still fits the 10s cap (the 5s floor now applies
+  only to a chunk that stands alone).
+- `core/characters.py`: `title()` preserves interior capitals (`MARY-JANE` ->
+  `Mary-Jane`, `O'BRIEN` -> `O'Brien`) and the caps-name detector matches
+  apostrophized/hyphenated names.
+- `core/ref_manifest.py`: the environment subject uses the parsed slugline
+  location/time ("Newsroom at night") instead of the raw `INT. ... - NIGHT`.
+- `core/h3_builder.py`: falls back to templates only on `llm.LLMError`;
+  unexpected exceptions from a custom `rewrite` now propagate.
+- Version `0.9.1` -> `0.10.0`.
+
+### Fixed
+- `core/llm.py`: `chat` no longer surfaces raw `HTTPError`/`JSONDecodeError`,
+  block silently on a hung endpoint, or leak the error response body.
+
 ## [0.9.1] - 2026-10-17
 
 ### Added
@@ -137,6 +180,7 @@ Versioning practices:
 - Config format `config.yaml` → `config.toml` (stdlib `tomllib`).
   `PROJECT_PLAN.md` documents the dependency use policy (§3.2).
 
-[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/drax-xard/script2prompt/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.10.0
 [0.9.1]: https://github.com/drax-xard/script2prompt/releases/tag/v0.9.1
 [0.9.0]: https://github.com/drax-xard/script2prompt/releases/tag/v0.9.0

@@ -1,13 +1,19 @@
 [project]
 name = "script2prompt"
-version = "0.9.1"
+version = "0.10.0"
 description = "Translate movie scripts/screenplays into Minimax H3 video prompts"
 requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
 dependencies = []
 
 [project.optional-dependencies]
 pdf = ["pypdf>=4.0"]
 web = ["streamlit>=1.30"]
+dev = ["ruff>=0.6"]
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -15,3 +21,12 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["script2prompt*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+# Long prose/system-prompt strings and the H3 example lines are intentional.
+ignore = ["E501"]

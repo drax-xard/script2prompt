@@ -37,6 +37,47 @@ pick_extra() {
     esac
 }
 
+configure_telemetry_optout() {
+    # Add [browser] gatherUsageStats = false to ~/.streamlit/config.toml,
+    # preserving any existing content/comments.
+    local cfg="$HOME/.streamlit/config.toml"
+    python3 - "$cfg" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1]).expanduser()
+text = path.read_text(encoding="utf-8") if path.is_file() else ""
+active_false = re.compile(r"^[ \t]*gatherUsageStats[ \t]*=[ \t]*false[ \t]*(?:#.*)?$", re.M)
+active_true = re.compile(r"^([ \t]*gatherUsageStats[ \t]*=[ \t]*)true[ \t]*(#.*)?$", re.M)
+
+if active_false.search(text):
+    print(f"telemetry opt-out already present in {path}")
+    raise SystemExit(0)
+if active_true.search(text):
+    path.write_text(active_true.sub(r"\1false\2", text), encoding="utf-8")
+    print(f"updated existing setting in {path} (gatherUsageStats = false)")
+    raise SystemExit(0)
+
+lines = text.splitlines()
+out: list[str] = []
+inserted = False
+for line in lines:
+    out.append(line)
+    if not inserted and line.strip() == "[browser]":
+        out.append("gatherUsageStats = false")
+        inserted = True
+if not inserted:
+    if out and out[-1].strip():
+        out.append("")
+    out += ["[browser]", "gatherUsageStats = false"]
+
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text("\n".join(out).rstrip("\n") + "\n", encoding="utf-8")
+print(f"wrote telemetry opt-out to {path}")
+PY
+}
+
 if [ "$#" -gt 0 ]; then
     raw="$1"
 else
@@ -69,6 +110,30 @@ echo
 echo "done. versions:"
 "$VENV_PY" --version
 "$VENV_PY" -c 'from importlib.metadata import version; print("script2prompt", version("script2prompt"))' 2>/dev/null || true
-if [ "$extras" = "web" ] || [ "$extras" = "pdf,web" ]; then
+
+installed_web=false
+case ",$extras," in
+    *,web,*) installed_web=true ;;
+esac
+
+if [ "$installed_web" = true ]; then
+    echo
+    echo "note: Streamlit collects anonymous usage statistics by default and"
+    echo "      shows a telemetry notice on the first run. To opt out, add:"
+    echo
+    echo "          [browser]"
+    echo "          gatherUsageStats = false"
+    echo
+    echo "      to $HOME/.streamlit/config.toml"
+    if [ -t 0 ]; then
+        read -r -p "Add this opt-out to ~/.streamlit/config.toml now? [y/N]: " optout || true
+        case "${optout:-}" in
+            y|Y|yes|YES) configure_telemetry_optout ;;
+            *) echo "skipped; you can add it manually later." ;;
+        esac
+    else
+        echo "(non-interactive run: skipping; add the setting manually if desired.)"
+    fi
+    echo
     echo "launch the web wizard with: ./run_web.sh"
 fi

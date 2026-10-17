@@ -11,6 +11,11 @@ Status: **B1–B13 and B15 are fixed** (see `tests/test_hardening.py`, 19 new
 regression tests). **B14** (compound speaker IDs) remains open as a feature.
 The bug entries are kept as a record of the issue and the fix applied.
 
+The 0.10.0 milestone (see `CHANGELOG.md`) also resolved several items from the
+"Improvements" list below (shared soundscape helper, `llm.chat` hardening,
+environment naming, name casing, long-action splitting, tiny-chunk merging);
+those entries are marked **[DONE 0.10.0]**.
+
 ---
 
 ## Bugs
@@ -178,28 +183,24 @@ Passing a scene (no `shots` key) instead of a chunk silently produces
 
 ## Improvements (robustness / design)
 
-- **Shared soundscape picker.** `fallback.build` and `r2v.build` duplicate the
-  "first two action sentences" logic (`fallback.py:173-183`, `r2v.py:105-115`).
-  Extract one helper.
-- **Narrow the broad `except Exception`** in `h3_builder.build`
-  (`h3_builder.py:31`). It guarantees fallback but also swallows programming
-  errors inside a custom `rewrite`. Catch expected network/parse errors and/or
-  log the swallowed exception.
-- **Harden `llm.chat`** (`llm.py:16`): `max_tokens`, configurable timeout, a
-  retry/backoff, explicit non-2xx handling, and an env override for temperature.
-  Currently a hung endpoint blocks for 120s per chunk.
-- **Single source of truth for H3 rules.** The field/format rules are duplicated
-  between `prompts.py` and `validator.py`; they can drift. Share constants.
-- **`ref_manifest` environment naming.** Subject 1 reads `the INT. NEWSROOM -
-  NIGHT environment`; parse the slugline into location/time for nicer
-  definitions.
-- **`title()` / `_CAPS_NAME`** mishandle hyphens and apostrophes
-  (`MARY-JANE` → `Mary-jane`, `O'BRIEN` → `O'brien`; hyphen splits CAPS names).
-- **Split long action lines.** Only dialogue is split; a 100-word action beat is
-  clamped to a 10s chunk. Split action at sentence boundaries like monologues.
-- **Min-duration behavior.** Any tiny chunk is padded to 5s
-  (`chunker.py:90`); two one-line beats become 10s of runtime. Consider the
-  floor only when content justifies it.
+- **[DONE 0.10.0] Shared soundscape picker.** Extracted to
+  `render.soundscape_sentences`, used by `fallback.build` and `r2v.build`.
+- **[DONE 0.10.0] Narrow the broad `except Exception`** in `h3_builder.build`:
+  now catches only `llm.LLMError`, so programming errors propagate.
+- **[DONE 0.10.0] Harden `llm.chat`**: `LLMError`, `max_tokens`, configurable
+  timeout, retry/backoff, explicit non-2xx handling, and `S2P_TEMPERATURE` /
+  `S2P_TIMEOUT` env overrides.
+- **Single source of truth for H3 rules** (deferred): the field/format rules in
+  `prompts.py` (prose) and `validator.py` (constants) can still drift.
+- **[DONE 0.10.0] `ref_manifest` environment naming.** `slugline_parts` parses
+  location/time ("Newsroom at night").
+- **[DONE 0.10.0] `title()` / `_CAPS_NAME`** handle hyphens and apostrophes
+  (`Mary-Jane`, `O'Brien`).
+- **[DONE 0.10.0] Split long action lines** at sentence boundaries like
+  monologues (`chunker._split_long_action`).
+- **[DONE 0.10.0] Min-duration behavior.** A sub-5s trailing chunk merges into
+  its predecessor when the pair fits the cap; the 5s floor applies only to a
+  chunk that stands alone.
 - **Package metadata.** Add `[project.scripts]` (`script2prompt = "script2prompt.__main__:main"`),
   project URLs, and classifiers to `pyproject.toml`.
 - **Manifest versioning.** Add `schema_version` to `manifest.json` /
@@ -215,21 +216,19 @@ Passing a scene (no `shots` key) instead of a chunk silently produces
 
 ## Test gaps
 
-Addressed by `tests/test_hardening.py` (19 tests) for B1–B13/B15. Still open:
+Addressed by `tests/test_hardening.py` (19 tests) for B1–B13/B15 and by
+`tests/test_quality.py` + `tests/test_llm.py` for the 0.10.0 work. Still open:
 
-- No test for `llm.chat` error paths (non-2xx, malformed JSON) — only the
-  success path against the fake server.
+- No test for `write_pack` clean/overwrite semantics (feature not implemented).
 
 ## Tooling / repo hygiene
 
 - **No CI.** Add GitHub Actions running `.venv/bin/python -m unittest discover -s tests`
   on 3.11–3.13, plus a zero-dependency import check and an optional-extras job.
-- **No `LICENSE`.** Recommended for a public repo.
-- **No `README.md`.** AGENTS.md forbids unprompted doc files, so this is only a
-  recommendation; a short README pointing at the CLI and `PROJECT_PLAN.md` would
-  help first-time users.
-- **No linter config.** `ruff`/`flake8` would catch the unused-import/dead-code
-  class of issues (none found by hand, but it is unenforced).
+  **Still open** (deferred to a 0.10.x follow-up).
+- **[DONE 0.10.0] `LICENSE`** — GPL-3.0-or-later.
+- **[DONE] `README.md`** — project overview, install/usage, config, layout.
+- **[DONE 0.10.0] Linter config** — `ruff` via the `dev` extra + `[tool.ruff]`.
 
 ---
 
@@ -239,5 +238,6 @@ Addressed by `tests/test_hardening.py` (19 tests) for B1–B13/B15. Still open:
 2. **B2, B3, B4** (Medium) + tests. **Done.**
 3. **B5, B6, B7, B12, B13** (parser correctness). **Done.**
 4. **B8, B9, B10, B11, B15** (robustness). **Done.**
-5. Improvements (shared helpers, `llm.chat` hardening, metadata) and CI. **Open.**
+5. Improvements (shared helpers, `llm.chat` hardening, output quality). **Done (0.10.0).**
+   CI + package metadata (scripts/URLs) remain open.
 6. **B14** (compound speaker IDs). **Open** (feature, not a defect).

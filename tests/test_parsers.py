@@ -8,8 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from script2prompt.parsers import fdx, fountain, pdf, plaintext
-from script2prompt.parsers import parse_file
+from script2prompt.parsers import fdx, fountain, parse_file, pdf, plaintext
 
 
 class TestPlaintext(unittest.TestCase):
@@ -144,9 +143,8 @@ class _FakeReader:
 
 class TestPdf(unittest.TestCase):
     def test_missing_extra_message(self) -> None:
-        with mock.patch.dict(sys.modules, {"pypdf": None}):
-            with self.assertRaises(ImportError) as ctx:
-                pdf.extract_text("whatever.pdf")
+        with mock.patch.dict(sys.modules, {"pypdf": None}), self.assertRaises(ImportError) as ctx:
+            pdf.extract_text("whatever.pdf")
         self.assertIn("pip install .[pdf]", str(ctx.exception))
 
     def test_extract_and_parse_with_fake_pypdf(self) -> None:

@@ -93,7 +93,7 @@ def _check_shots(body: str, duration: float) -> list[str]:
     if len(stamps) != max(len(numbers) - 1, 0):
         issues.append("each shot after the first needs one At MM:SS.mmm timestamp")
     times = [int(mm) * 60 + int(ss) + int(ms) / 1000 for _, mm, ss, ms in stamps]
-    for earlier, later in zip(times, times[1:]):
+    for earlier, later in zip(times, times[1:], strict=False):
         if not later > earlier:
             issues.append("cut times must strictly increase")
             break
@@ -148,7 +148,7 @@ def _section(prompt: str, label: str, following: tuple[str, ...]) -> str:
         return ""
     start += len(label)
     end = min(
-        ([prompt.find(other, start) for other in following if prompt.find(other, start) >= 0] or [len(prompt)])
+        [prompt.find(other, start) for other in following if prompt.find(other, start) >= 0] or [len(prompt)]
     )
     return prompt[start:end].strip()
 
@@ -158,7 +158,7 @@ def _validate_r2v(prompt: str, duration: float, bible: list | None = None) -> li
     found = [prompt.find(section) for section in R2V_SECTIONS]
     if any(pos < 0 for pos in found):
         return ["missing required R2V section(s)"]
-    if not all(a < b for a, b in zip(found, found[1:])):
+    if not all(a < b for a, b in zip(found, found[1:], strict=False)):
         issues.append("R2V sections out of order")
 
     definitions = _section(prompt, "subject_definitions:", R2V_SECTIONS[1:])
@@ -180,9 +180,8 @@ def _validate_r2v(prompt: str, duration: float, bible: list | None = None) -> li
         if line.startswith("<Audio"):
             if not marker or marker.group(1) not in AUDIO_MARKERS:
                 issues.append(f"invalid audio retention marker: {line[:60]}")
-        elif line.startswith("<"):
-            if not marker or marker.group(1) not in VISUAL_MARKERS:
-                issues.append(f"invalid visual retention marker: {line[:60]}")
+        elif line.startswith("<") and (not marker or marker.group(1) not in VISUAL_MARKERS):
+            issues.append(f"invalid visual retention marker: {line[:60]}")
     if SPEAKER_ID.search(retention):
         issues.append("retention_analysis must not contain speaker IDs")
 

@@ -56,11 +56,9 @@ def _looks_like_cue(line: str, next_line: str | None = None) -> bool:
         return False
     if _is_transition(line):
         return False
-    if next_line is not None and not next_line.strip():
-        # A cue must be followed by dialogue/parenthetical on the next line; a
-        # lone ALL-CAPS action beat ("THUNDER") is not a character.
-        return False
-    return True
+    # A cue must be followed by dialogue/parenthetical on the next line; a
+    # lone ALL-CAPS action beat ("THUNDER") is not a character.
+    return next_line is None or bool(next_line.strip())
 
 
 def normalize_cue(text: str) -> tuple[str, str]:

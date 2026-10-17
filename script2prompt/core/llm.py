@@ -9,6 +9,8 @@ sends it and returns the model's prompt text. The rule-based templates in
 from __future__ import annotations
 
 import json
+import time
+import urllib.error
 import urllib.request
 
 from . import prompts
@@ -18,25 +20,65 @@ from .modes import instruction_line
 from .ref_manifest import propose
 
 
+class LLMError(RuntimeError):
+    """The LLM endpoint is unreachable or returned an unusable response."""
+
+
+def _error_detail(exc: urllib.error.HTTPError) -> str:
+    """Short body excerpt from an HTTP error, for the raised message."""
+    try:
+        body = exc.read(200).decode("utf-8", "replace").strip()
+    except Exception:  # reading the error body must never mask the original error
+        return ""
+    finally:
+        exc.close()
+    return f": {body}" if body else ""
+
+
 def chat(messages: list[dict], base_url: str | None = None, model: str | None = None,
-         temperature: float | None = None, timeout: int = 120) -> str:
-    """POST /chat/completions and return the assistant content (no SDK needed)."""
-    cfg = load()
-    base = (base_url or cfg["llm"]["base_url"]).rstrip("/")
+         temperature: float | None = None, max_tokens: int | None = None,
+         timeout: int | None = None, retries: int | None = None) -> str:
+    """POST /chat/completions and return the assistant content (no SDK needed).
+
+    Transient failures (network errors, timeouts, 5xx) are retried with
+    exponential backoff; a definitive failure raises :class:`LLMError`.
+    """
+    cfg = load()["llm"]
+    base = (base_url or cfg["base_url"]).rstrip("/")
     payload = {
-        "model": model or cfg["llm"]["model"],
+        "model": model or cfg["model"],
         "messages": messages,
-        "temperature": cfg["llm"]["temperature"] if temperature is None else temperature,
+        "temperature": cfg["temperature"] if temperature is None else temperature,
+        "max_tokens": cfg["max_tokens"] if max_tokens is None else max_tokens,
     }
+    timeout = cfg["timeout"] if timeout is None else timeout
+    retries = max(int(cfg["retries"] if retries is None else retries), 0)
     req = urllib.request.Request(
         f"{base}/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
-    return body["choices"][0]["message"]["content"]
+    delay = 0.5
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+            return body["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as exc:
+            detail = _error_detail(exc)  # reads (and closes) the error response
+            if exc.code >= 500 and attempt < retries:
+                pass  # transient server error: fall through to backoff
+            else:
+                raise LLMError(f"LLM endpoint returned HTTP {exc.code}{detail}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt >= retries:
+                raise LLMError(f"LLM endpoint unreachable: {exc}") from exc
+        except (json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
+            raise LLMError(f"malformed LLM response: {exc}") from exc
+        time.sleep(delay)
+        delay *= 2
+    raise LLMError("LLM endpoint failed after retries")  # pragma: no cover
 
 
 def _character_lines(bible: list[Character]) -> list[str]:

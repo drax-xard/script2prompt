@@ -15,17 +15,7 @@ from script2prompt.parsers.base import Element
 from .characters import Character, title
 from .chunker import split_sentences
 from .modes import instruction_line
-
-
-def _clean(text: str) -> str:
-    return re.sub(r"\s+", " ", text.strip())
-
-
-def _finish(sentence: str) -> str:
-    sentence = _clean(sentence)
-    if sentence and sentence[-1] not in ".!?":
-        sentence += "."
-    return sentence
+from .render import clean, finish, soundscape_sentences
 
 
 def _is_voiceover(extension: str, delivery: str) -> bool:
@@ -71,7 +61,7 @@ def _render_dialogue(words: str, head: str, voiceover: bool, mark: str) -> str:
     # Plain form matches Example_Text2Video_Prompt.txt: no colon after "says",
     # no space after the language tag, terminal period outside </d>.
     # Voiceover keeps the guide's fixed phrase (with colon).
-    tag = f"<d>[English]{_clean(words)}</d>."
+    tag = f"<d>[English]{clean(words)}</d>."
     if voiceover:
         line = f"{head} says in an off-screen voiceover: {tag} {head}'s lips remain completely closed."
     else:
@@ -105,7 +95,7 @@ def _shot_text(elements: list[Element], speakers: dict[str, Character],
             )
             delivery = ""
         elif el.kind == "action":
-            parts.extend(_finish(s) for s in split_sentences(el.text))
+            parts.extend(finish(s) for s in split_sentences(el.text))
     return " ".join(parts)
 
 
@@ -154,7 +144,7 @@ def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
     if mode not in ("T2VA", "I2VA", "FL2VA", "L2VA"):
         raise NotImplementedError(f"{mode} builder arrives in Milestone 3")
     speakers = chunk.get("speakers", {})
-    context = _clean(chunk.get("context", ""))
+    context = clean(chunk.get("context", ""))
     shots = chunk.get("shots", [])
     duration = chunk.get("duration", 8.0)
     mentioned: set[str] = set()
@@ -174,26 +164,16 @@ def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
         if closing and i == len(shots) - 1:
             body = f"{body} {closing}"
         rendered.append(body)
-    style_sentence = _finish(style)
+    style_sentence = finish(style)
     description = f"{style_sentence}\n[Shot 1] {rendered[0]}" if rendered else f"{style_sentence}\n[Shot 1] ..."
     for extra in rendered[1:]:
         description += f"\n{extra}"
 
-    actions = [e.text for e in chunk.get("elements", []) if e.kind == "action"]
-    sentences: list[str] = []
-    for action in actions:
-        sentences.extend(_finish(s) for s in split_sentences(action))
-        if len(sentences) >= 2:
-            break
-    sentences = sentences[:2]
-    if not sentences:
-        sentences = ["Quiet room tone with soft movement sounds."]
-    elif len(sentences) < 2:
-        sentences.append("Soft room tone continues underneath.")
+    soundscape = soundscape_sentences(chunk)
 
     fields = (
         f"integrated_multimodal_description:\n{description}\n\n"
-        f"overall_soundscape:\n{' '.join(sentences)}\n\n"
+        f"overall_soundscape:\n{soundscape}\n\n"
         "non_diegetic_music:\nN/A"
     )
     # Field labels on their own lines, matching Example_*_Prompt.txt layout.

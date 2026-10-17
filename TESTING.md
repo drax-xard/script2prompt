@@ -31,6 +31,7 @@ Optional extras (only if you need them):
 ```bash
 .venv/bin/pip install -e ".[pdf]"   # PDF input via pypdf
 .venv/bin/pip install -e ".[web]"   # Streamlit web wizard
+.venv/bin/pip install -e ".[dev]"   # ruff linter (development only)
 ```
 
 ## 3. Confirm the install with the test suite (smoke test)
@@ -39,8 +40,14 @@ Optional extras (only if you need them):
 .venv/bin/python -m unittest discover -s tests
 ```
 
-Expected: `Ran 102 tests ... OK`. If this fails, stop here — the environment is
+Expected: `Ran 124 tests ... OK`. If this fails, stop here — the environment is
 not set up correctly and the rest of the guide will not be meaningful.
+
+Optional lint check (needs the `dev` extra):
+
+```bash
+.venv/bin/ruff check .
+```
 
 ## 4. First CLI run (T2VA, the default mode)
 
@@ -169,10 +176,14 @@ style = "Live-action, cinematic"
 base_url = "http://localhost:11434/v1"
 model = "local-model"
 temperature = 0.3
+max_tokens = 2048
+timeout = 120
+retries = 2
 ```
 
 Precedence: `config.toml` < `config.local.toml` < environment variables
-(`OPENAI_BASE_URL`, `S2P_MODEL`). To test an alternate config:
+(`OPENAI_BASE_URL`, `S2P_MODEL`, `S2P_TEMPERATURE`, `S2P_TIMEOUT`). To test an
+alternate config:
 
 ```bash
 cp config.toml /tmp/test.toml

@@ -1,5 +1,6 @@
 # Script2Prompt defaults (v1: mode is per-project).
-# Override locally via config.local.toml or OPENAI_BASE_URL / S2P_MODEL env vars.
+# Override locally via config.local.toml or env vars
+# (OPENAI_BASE_URL, S2P_MODEL, S2P_TEMPERATURE, S2P_TIMEOUT).
 # Loaded with stdlib tomllib (no pyyaml needed).
 
 [project]
@@ -12,3 +13,6 @@ style = "Live-action, cinematic"
 base_url = "http://localhost:11434/v1"
 model = "local-model"
 temperature = 0.3
+max_tokens = 2048   # completion cap per chunk
+timeout = 120       # per-request seconds
+retries = 2         # transient-failure retries (5xx / network / timeout)

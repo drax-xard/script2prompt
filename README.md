@@ -4,7 +4,7 @@ Translate movie scripts (screenplays) into Minimax H3 video prompts. Point it
 at a screenplay and it produces a ready-to-use prompt pack: one validated H3
 prompt per 5–10s chunk, with a consistent character bible.
 
-**Status: `0.9.1` (pre-1.0).** All core features and all five H3 modes are
+**Status: `0.10.0` (pre-1.0).** All core features and all five H3 modes are
 implemented, tested, and validated end-to-end. Output format may still change at
 a minor bump until 1.0. See [`CHANGELOG.md`](CHANGELOG.md) for history and
 [`IMPROVEMENTS.md`](IMPROVEMENTS.md) for the audit/backlog.
@@ -60,6 +60,9 @@ package in editable mode. The prompt offers:
 | `3`/`both` | both extras | everything |
 
 Pass the choice as an argument to skip the prompt (e.g. `./install.sh both`).
+When you pick the `web` extra, `install.sh` mentions that Streamlit collects
+anonymous usage statistics by default and offers to add
+`[browser] gatherUsageStats = false` to `~/.streamlit/config.toml` for you.
 
 Manual equivalent (project-local virtualenv only):
 
@@ -113,15 +116,25 @@ Written to the `-o` directory:
 
 Defaults live in [`config.toml`](config.toml), loaded with stdlib `tomllib`.
 Precedence: `config.toml` < `config.local.toml` < env vars
-(`OPENAI_BASE_URL`, `S2P_MODEL`). The LLM endpoint must be OpenAI-compatible
-(no SDK required; defaults target a local server on `http://localhost:11434/v1`).
+(`OPENAI_BASE_URL`, `S2P_MODEL`, `S2P_TEMPERATURE`, `S2P_TIMEOUT`). The LLM
+endpoint must be OpenAI-compatible (no SDK required; defaults target a local
+server on `http://localhost:11434/v1`).
+
+| `[llm]` key | Default | Meaning |
+| ----------- | ------- | ------- |
+| `base_url` | `http://localhost:11434/v1` | OpenAI-compatible endpoint |
+| `model` | `local-model` | model name |
+| `temperature` | `0.3` | sampling temperature (`S2P_TEMPERATURE`) |
+| `max_tokens` | `2048` | completion cap per chunk |
+| `timeout` | `120` | per-request seconds (`S2P_TIMEOUT`) |
+| `retries` | `2` | retries on transient failures (5xx / network / timeout) |
 
 ## Project layout
 
 ```
 script2prompt/
   parsers/   input formats -> elements (plaintext, fountain, fdx, pdf)
-  core/      scenes, characters, chunker, modes, builders, validator, llm, pipeline, config
+  core/      scenes, characters, chunker, modes, builders, render, validator, llm, pipeline, config
   app/       web.py (Streamlit wizard)
   __main__.py  CLI entry point
 tests/       stdlib unittest suite
@@ -134,6 +147,12 @@ run_web.sh   check the venv, then launch the web wizard
 
 ```bash
 .venv/bin/python -m unittest discover -s tests
+```
+
+Lint (install the dev extra first: `.venv/bin/pip install -e ".[dev]"`):
+
+```bash
+.venv/bin/ruff check .
 ```
 
 ## Docs

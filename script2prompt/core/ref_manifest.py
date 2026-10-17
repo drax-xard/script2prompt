@@ -8,9 +8,32 @@ from ``picture_slots``.
 """
 from __future__ import annotations
 
+import re
+
 from .characters import Character, title
 
 TIMBRE_ROLE = "voice-timbre reference"
+
+# Slugline: prefix, location, optional " - TIME". Requires spaces around the
+# dash so hyphenated locations ("OPEN-PLAN OFFICE - DAY") are not mis-split.
+_SLUGLINE = re.compile(
+    r"^\s*(?P<int_ext>INT\./EXT\.|INT|EXT|EST)\.?\s*(?P<location>.+?)"
+    r"(?:\s+-\s+(?P<time>.+?))?\s*$",
+    re.IGNORECASE,
+)
+
+
+def slugline_parts(context: str) -> tuple[str, str]:
+    """Split a slugline into ``(location, time)``, title-cased.
+
+    Falls back to the raw context as the location when the line is not a
+    recognizable slugline. Both parts may be empty.
+    """
+    text = context.strip()
+    match = _SLUGLINE.match(text)
+    if not match:
+        return text, ""
+    return title(match.group("location")), title(match.group("time") or "")
 
 
 def _subject_shots(chunk: dict, name: str | None) -> list[int]:
@@ -73,12 +96,13 @@ def propose(chunk: dict, bible: list[Character] = ()) -> dict:
     subjects: list[dict] = []
     context = (chunk.get("context") or "").strip()
     if context:
+        location, time = slugline_parts(context)
         subjects.append(
             {
                 "label": "<Subject 1>",
                 "kind": "environment",
-                "name": context,
-                "description": "",
+                "name": location or context,
+                "description": time,
                 "speaker_id": None,
                 "shots": _subject_shots(chunk, None),
                 "shots_text": _fmt_shots(_subject_shots(chunk, None)),

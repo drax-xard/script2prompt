@@ -13,14 +13,16 @@ from __future__ import annotations
 from . import fallback
 from .characters import Character, title
 from .ref_manifest import propose
+from .render import soundscape_sentences
 
 
 def _definitions(manifest: dict) -> list[str]:
     lines = []
     for sub in manifest["subjects"]:
         if sub["kind"] == "environment":
+            when = f" at {sub['description'].lower()}" if sub.get("description") else ""
             lines.append(
-                f"{sub['label']} is the {sub['name']} environment, with the layout "
+                f"{sub['label']} is the {sub['name']} environment{when}, with the layout "
                 "and atmosphere established in [Shot 1]."
             )
         elif sub["speaker_id"]:
@@ -105,24 +107,14 @@ def build(chunk: dict, bible: list[Character] = (), manifest: dict | None = None
     for extra in rendered[1:]:
         description += f"\n{extra}"
 
-    actions = [e.text for e in chunk.get("elements", []) if e.kind == "action"]
-    sentences: list[str] = []
-    for action in actions:
-        sentences.extend(fallback._finish(s) for s in fallback.split_sentences(action))
-        if len(sentences) >= 2:
-            break
-    sentences = sentences[:2]
-    if not sentences:
-        sentences = ["Quiet room tone with soft movement sounds."]
-    elif len(sentences) < 2:
-        sentences.append("Soft room tone continues underneath.")
+    soundscape = soundscape_sentences(chunk)
 
     sections = [
         ("subject_definitions:", _definitions(manifest)),
         ("summary:", [_summary(manifest, max(len(shots), 1))]),
         ("retention_analysis:", _retention(manifest)),
         ("detailed_description:", [description]),
-        ("overall_soundscape:", [" ".join(sentences)]),
+        ("overall_soundscape:", [soundscape]),
         ("non_diegetic_music:", ["N/A"]),
     ]
     return "\n\n".join(f"{label}\n" + "\n".join(lines) for label, lines in sections)

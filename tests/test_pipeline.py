@@ -84,9 +84,9 @@ class TestInputs(unittest.TestCase):
 
     def test_parse_bytes_fdx(self) -> None:
         xml = (
-            '<FinalDraft><Content><Paragraph Type="Scene Heading">'
-            "<Text>INT. ROOM - DAY</Text></Paragraph></Content></FinalDraft>"
-        ).encode()
+            b'<FinalDraft><Content><Paragraph Type="Scene Heading">'
+            b"<Text>INT. ROOM - DAY</Text></Paragraph></Content></FinalDraft>"
+        )
         elements = pipeline.parse_bytes(xml, "custom.fdx")
         self.assertEqual(elements[0].text, "INT. ROOM - DAY")
 

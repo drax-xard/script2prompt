@@ -103,14 +103,24 @@ class TestBuilderLLM(unittest.TestCase):
         bible, chunks = pipeline()
 
         def boom(chunk, bible, mode="T2VA", style=""):
-            raise RuntimeError("endpoint offline")
+            raise llm.LLMError("endpoint offline")
 
         fallback = h3_builder.build(chunks[0], bible)
         self.assertEqual(h3_builder.build(chunks[0], bible, rewrite=boom), fallback)
 
+    def test_unexpected_error_propagates(self) -> None:
+        bible, chunks = pipeline()
+
+        def buggy(chunk, bible, mode="T2VA", style=""):
+            raise RuntimeError("a programming error, not an offline endpoint")
+
+        with self.assertRaises(RuntimeError):
+            h3_builder.build(chunks[0], bible, rewrite=buggy)
+
     def test_falls_back_on_empty(self) -> None:
         bible, chunks = pipeline()
-        empty = lambda chunk, bible, mode="T2VA", style="": "   \n  "
+        def empty(chunk, bible, mode="T2VA", style=""):
+            return "   \n  "
         fallback = h3_builder.build(chunks[0], bible)
         self.assertEqual(h3_builder.build(chunks[0], bible, rewrite=empty), fallback)
 
@@ -137,6 +147,44 @@ class _FakeEndpoint(BaseHTTPRequestHandler):
         pass
 
 
+class _StatusEndpoint(BaseHTTPRequestHandler):
+    """Always answers with the status/body stored on the server object."""
+
+    def do_POST(self) -> None:  # noqa: N802
+        length = int(self.headers.get("Content-Length", 0))
+        self.rfile.read(length)
+        body = self.server.status_body
+        self.send_response(self.server.status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args) -> None:
+        pass
+
+
+class _SequenceEndpoint(BaseHTTPRequestHandler):
+    """Answers ``(status, body)`` pairs popped from ``server.sequence``."""
+
+    def do_POST(self) -> None:  # noqa: N802
+        length = int(self.headers.get("Content-Length", 0))
+        self.rfile.read(length)
+        status, body = self.server.sequence.pop(0)
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args) -> None:
+        pass
+
+
+_OK = json.dumps({"choices": [{"message": {"content": "SERVER PROMPT"}}]}).encode()
+_MSGS = [{"role": "user", "content": "hi"}]
+
+
 class TestEndpoint(unittest.TestCase):
     def setUp(self) -> None:
         self.server = HTTPServer(("127.0.0.1", 0), _FakeEndpoint)
@@ -153,6 +201,7 @@ class TestEndpoint(unittest.TestCase):
         self.assertEqual(out, "SERVER PROMPT")
         self.assertEqual(self.server.received["model"], "test-model")
         self.assertEqual(self.server.received["messages"][0]["content"], "hi")
+        self.assertEqual(self.server.received["max_tokens"], 2048)
 
     def test_build_with_live_rewrite(self) -> None:
         bible, chunks = pipeline()
@@ -161,6 +210,56 @@ class TestEndpoint(unittest.TestCase):
             out = h3_builder.build(chunks[0], bible, rewrite=llm.rewrite)
         self.assertEqual(out, "SERVER PROMPT")
         self.assertEqual(self.server.received["messages"][0]["role"], "system")
+
+
+class TestEndpointErrors(unittest.TestCase):
+    def _serve(self, handler, **attrs) -> str:
+        server = HTTPServer(("127.0.0.1", 0), handler)
+        for key, value in attrs.items():
+            setattr(server, key, value)
+        self._server = server
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.shutdown)
+        self.addCleanup(server.server_close)
+        return f"http://127.0.0.1:{server.server_port}/v1"
+
+    def test_non_2xx_raises_llmerror(self) -> None:
+        url = self._serve(_StatusEndpoint, status_code=404, status_body=b"not found")
+        with self.assertRaises(llm.LLMError) as ctx:
+            llm.chat(_MSGS, base_url=url, retries=0)
+        self.assertIn("404", str(ctx.exception))
+
+    def test_malformed_json_raises_llmerror(self) -> None:
+        url = self._serve(_StatusEndpoint, status_code=200, status_body=b"not json")
+        with self.assertRaises(llm.LLMError):
+            llm.chat(_MSGS, base_url=url, retries=0)
+
+    def test_missing_choices_raises_llmerror(self) -> None:
+        url = self._serve(_StatusEndpoint, status_code=200, status_body=b"{}")
+        with self.assertRaises(llm.LLMError):
+            llm.chat(_MSGS, base_url=url, retries=0)
+
+    def test_unreachable_endpoint_raises_llmerror(self) -> None:
+        with self.assertRaises(llm.LLMError):
+            llm.chat(_MSGS, base_url="http://127.0.0.1:1/v1", retries=0)
+
+    def test_retries_5xx_then_succeeds(self) -> None:
+        url = self._serve(_SequenceEndpoint, sequence=[(503, b"boom"), (200, _OK)])
+        with mock.patch("script2prompt.core.llm.time.sleep"):
+            out = llm.chat(_MSGS, base_url=url, retries=1)
+        self.assertEqual(out, "SERVER PROMPT")
+
+    def test_exhausted_retries_raise(self) -> None:
+        url = self._serve(_StatusEndpoint, status_code=503, status_body=b"boom")
+        with mock.patch("script2prompt.core.llm.time.sleep"), self.assertRaises(llm.LLMError):
+            llm.chat(_MSGS, base_url=url, retries=1)
+
+    def test_client_error_not_retried(self) -> None:
+        url = self._serve(_SequenceEndpoint, sequence=[(400, b"bad"), (200, _OK)])
+        with self.assertRaises(llm.LLMError):
+            llm.chat(_MSGS, base_url=url, retries=3)
+        # The second (successful) response is never reached for a 4xx.
+        self.assertEqual(len(self._server.sequence), 1)
 
 
 if __name__ == "__main__":

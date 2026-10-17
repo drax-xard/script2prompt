@@ -16,6 +16,9 @@ config.local.toml
 out/
 exports/
 
+# Release archives
+*.zip
+
 # OS / editors
 .DS_Store
 .idea/

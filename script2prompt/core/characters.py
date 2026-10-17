@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 _ACTION_INTRO = re.compile(r"\b([A-Z][A-Z'\-]+(?:\s+[A-Z][A-Z'\-]+){0,2})\s*\(([^)]*)\)")
 _TRAITS_LIKE = re.compile(r"[\d,]")
-_CAPS_NAME = re.compile(r"\b([A-Z]{2,}(?:\s+[A-Z]{2,})?)\b")
+_CAPS_NAME = re.compile(r"\b([A-Z](?:['\-]?[A-Z])+(?:\s+[A-Z](?:['\-]?[A-Z])+)?)\b")
 _NOISE = frozenset({"INT", "EXT", "EST", "CUT", "FADE", "TO"})
 
 
@@ -26,8 +26,13 @@ class Character:
 
 
 def title(name: str) -> str:
-    """Human-readable form of a normalized cue name."""
-    return " ".join(word.capitalize() for word in name.split())
+    """Human-readable form of a normalized cue name.
+
+    Capitalizes each alphabetic run so hyphenated and apostrophized names keep
+    their interior capitals (``MARY-JANE`` -> ``Mary-Jane``, ``O'BRIEN`` ->
+    ``O'Brien``).
+    """
+    return re.sub(r"[A-Za-z]+", lambda m: m.group(0).capitalize(), name.lower())
 
 
 def build_bible(scenes: list[dict]) -> list[Character]:

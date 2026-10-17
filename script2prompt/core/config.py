@@ -16,6 +16,9 @@ DEFAULTS = {
         "base_url": "http://localhost:11434/v1",
         "model": "local-model",
         "temperature": 0.3,
+        "max_tokens": 2048,
+        "timeout": 120,
+        "retries": 2,
     },
 }
 
@@ -39,4 +42,8 @@ def load(path: str | Path = "config.toml", local_override: str | Path = "config.
         cfg["llm"]["base_url"] = os.environ["OPENAI_BASE_URL"]
     if os.environ.get("S2P_MODEL"):
         cfg["llm"]["model"] = os.environ["S2P_MODEL"]
+    if os.environ.get("S2P_TEMPERATURE"):
+        cfg["llm"]["temperature"] = float(os.environ["S2P_TEMPERATURE"])
+    if os.environ.get("S2P_TIMEOUT"):
+        cfg["llm"]["timeout"] = int(os.environ["S2P_TIMEOUT"])
     return cfg

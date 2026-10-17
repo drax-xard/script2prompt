@@ -134,6 +134,8 @@ script2prompt/
      exact install command. `pdfplumber` rejected (pypdf suffices).
    - `web = ["streamlit>=1.30"]` — `app/web.py:main()` only; `fastapi/uvicorn`
      rejected (Streamlit chosen for v1).
+   - `dev = ["ruff>=0.6"]` — lint tooling only; never imported by the package and
+     not required to run or test it.
 5. **Rejected:** `pydantic` (dataclasses suffice), `pyyaml` (moved to TOML),
    `openai` SDK (urllib POST suffices), `pytest` (unittest suffices).
 6. **Record every dependency decision** here and in `CHANGELOG.md` under `Unreleased`.
@@ -166,7 +168,7 @@ script2prompt/
 
 ---
 
-## 6. Milestones (status: milestones 1–7 done, 102 tests green)
+## 6. Milestones (status: milestones 1–8 done, 124 tests green)
 
 1. ✅ Offline core: parsers (txt/fountain) + scenes + bible + chunker + T2VA builder/validator + tests. *Done (`35c17c7`).*
 2. ✅ Mode layer: `modes.py` + I2VA/FL2VA/L2VA instruction lines + body shapes + per-mode validation. *Done (`72fedda`).*
@@ -175,6 +177,7 @@ script2prompt/
 5. ✅ Remaining parsers: FDX + PDF. *Done: `parsers/fdx.py` (`xml.etree`), `parsers/pdf.py` (lazy `pypdf`), `parsers/__init__.py:parse_file` dispatch.*
 6. ✅ Web wizard + one sample end-to-end per mode (1-page script → prompts + manifests). *Done: `core/pipeline.py` + `app/web.py` (Streamlit) + `__main__.py` CLI + `samples/one_page.txt`; all 5 modes validate clean.*
 7. ✅ Polish: budget meters, linter warnings, config, docs. *Done: `pipeline.budgets` + `pipeline.lint`, CLI `--shots/--config/--strict` + budget/lint output, web budget meters + lint panel, duration/shots clamping, README.*
+8. ✅ Output quality + LLM robustness (0.10.0): shared `core/render.py`, long-action splitting, tiny-chunk merge, name casing, environment naming, hardened `llm.chat` (`LLMError`, retries, timeouts), GPL-3.0 license, `ruff` dev extra.
 
 v2 hooks (no work now): `chunk.mode_override`, image upload/preview, storyboard multi-panel sheets, ComfyUI/API direct submit.
 

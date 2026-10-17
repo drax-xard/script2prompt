@@ -5,6 +5,7 @@
 - Project-local venv only: run everything via `.venv/bin/python` and `.venv/bin/pip`.
   Never bare `pip install`, never `--system`, never `sudo`. `.venv/` is git-ignored.
 - Verify: `.venv/bin/python -m unittest discover -s tests`
+- Lint: `.venv/bin/ruff check .` (needs the `dev` extra).
 
 ## Dependencies
 
@@ -13,13 +14,16 @@
 - Optionals are lazy-imported inside functions, never at module top level:
   `pypdf` in `parsers/pdf.py` (`.[pdf]`), `streamlit` in `app/web.py` (`.[web]`).
   Missing-extra errors must name the exact install command.
+- `dev` extra (`ruff`) is tooling only (`.venv/bin/ruff check .`) — never imported
+  by the package.
 - Rejected (don't reintroduce): `pydantic`, `pyyaml`, `openai` SDK, `pytest`,
   `pdfplumber`, `fastapi`. Rationale in `PROJECT_PLAN.md` §3.2.
 
 ## Config
 
 - `config.toml` via `core/config.py:load()` (stdlib `tomllib`).
-  Precedence: `config.toml` < `config.local.toml` < `OPENAI_BASE_URL` / `S2P_MODEL` env.
+  Precedence: `config.toml` < `config.local.toml` < env
+  (`OPENAI_BASE_URL`, `S2P_MODEL`, `S2P_TEMPERATURE`, `S2P_TIMEOUT`).
 - `load()` takes explicit paths — tests pass nonexistent paths to check defaults.
 
 ## Tests

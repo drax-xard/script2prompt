@@ -20,9 +20,14 @@ from .characters import Character
 CAP_SECONDS = 10.0
 MIN_SECONDS = 5.0
 DIALOGUE_WPS = 2.75
+ACTION_WPS = 0.16
 PIECE_WORDS = 18
 # Longest monologue that still fits the 10s cap after the 1.0s overhead.
 MONOLOGUE_WORDS = int((CAP_SECONDS - 1.0) * DIALOGUE_WPS)
+# Longest action beat that still fits the 10s cap after the 1.0s overhead.
+ACTION_WORDS = int((CAP_SECONDS - 1.0) / ACTION_WPS)
+# Action pieces are denser than dialogue, so split to roughly half the cap.
+ACTION_PIECE_WORDS = max(ACTION_WORDS // 2, PIECE_WORDS)
 
 
 def count_words(text: str) -> int:
@@ -44,7 +49,35 @@ def estimate(elements: list[Element]) -> float:
     """Estimate playback seconds for a list of elements."""
     action = sum(count_words(e.text) for e in elements if e.kind == "action")
     dialogue = sum(count_words(e.text) for e in elements if e.kind == "dialogue")
-    return action * 0.16 + dialogue / DIALOGUE_WPS + 1.0
+    return action * ACTION_WPS + dialogue / DIALOGUE_WPS + 1.0
+
+
+def _pieces(text: str, piece_words: int) -> list[str]:
+    """Split ``text`` at sentence boundaries into <=``piece_words`` pieces.
+
+    Sentences that individually exceed the budget are hard-split on word count.
+    """
+    units: list[str] = []
+    for sentence in split_sentences(text):
+        if count_words(sentence) <= piece_words:
+            units.append(sentence)
+        else:
+            words = sentence.split()
+            units.extend(
+                " ".join(words[i : i + piece_words]) for i in range(0, len(words), piece_words)
+            )
+    pieces: list[str] = []
+    current = ""
+    for unit in units:
+        candidate = f"{current} {unit}".strip()
+        if current and count_words(candidate) > piece_words:
+            pieces.append(current)
+            current = unit
+        else:
+            current = candidate
+    if current:
+        pieces.append(current)
+    return pieces
 
 
 def _split_long_dialogue(elements: list[Element]) -> list[Element]:
@@ -63,26 +96,7 @@ def _split_long_dialogue(elements: list[Element]) -> list[Element]:
         if el.kind != "dialogue" or count_words(el.text) <= MONOLOGUE_WORDS:
             out.append(el)
             continue
-        pieces: list[str] = []
-        current = ""
-        units: list[str] = []
-        for sentence in split_sentences(el.text):
-            if count_words(sentence) <= PIECE_WORDS:
-                units.append(sentence)
-            else:  # one sentence alone exceeds the budget: hard-split it
-                words = sentence.split()
-                units.extend(
-                    " ".join(words[i : i + PIECE_WORDS]) for i in range(0, len(words), PIECE_WORDS)
-                )
-        for unit in units:
-            candidate = f"{current} {unit}".strip()
-            if current and count_words(candidate) > PIECE_WORDS:
-                pieces.append(current)
-                current = unit
-            else:
-                current = candidate
-        if current:
-            pieces.append(current)
+        pieces = _pieces(el.text, PIECE_WORDS)
         total = len(pieces)
         for i, piece in enumerate(pieces):
             if i > 0 and last_cue is not None:
@@ -98,6 +112,23 @@ def _split_long_dialogue(elements: list[Element]) -> list[Element]:
             meta = dict(el.meta)
             meta["scenetrans"] = mark
             out.append(Element("dialogue", piece, meta))
+    return out
+
+
+def _split_long_action(elements: list[Element]) -> list[Element]:
+    """Split action beats longer than the 10s cap into sentence-boundary pieces.
+
+    Without this a long action line is clamped to a single 10s chunk, silently
+    exceeding the speech/action budget. Pieces share the chunk's 1.0s overhead,
+    so a piece target of half the cap keeps two pieces inside one chunk.
+    """
+    out: list[Element] = []
+    for el in elements:
+        if el.kind != "action" or count_words(el.text) <= ACTION_WORDS:
+            out.append(el)
+            continue
+        for piece in _pieces(el.text, ACTION_PIECE_WORDS):
+            out.append(Element("action", piece, dict(el.meta)))
     return out
 
 
@@ -157,12 +188,13 @@ def chunk(scene: dict, bible: list[Character] = (), duration: float = 8.0,
     by_name = {c.name: c for c in bible}
     effective_shots = 1 if mode == "FL2VA" else shots_max
     elements = _split_long_dialogue(scene.get("elements", []))
-    chunks: list[dict] = []
+    elements = _split_long_action(elements)
+    packed: list[list[Element]] = []
     current: list[Element] = []
 
     def flush() -> None:
         if current:
-            chunks.append(_make_chunk(scene, list(current), by_name, duration, effective_shots))
+            packed.append(list(current))
             current.clear()
 
     for block in _blocks(elements):
@@ -170,4 +202,13 @@ def chunk(scene: dict, bible: list[Character] = (), duration: float = 8.0,
             flush()
         current.extend(block)
     flush()
-    return chunks
+
+    # A sub-5s trailing pack is merged into its predecessor when the pair still
+    # fits the 10s cap, so a one-line tail is not padded to a full 5s chunk.
+    while len(packed) >= 2 and estimate(packed[-1]) < MIN_SECONDS:
+        if estimate(packed[-2] + packed[-1]) <= CAP_SECONDS:
+            packed[-2].extend(packed.pop())
+        else:
+            break
+
+    return [_make_chunk(scene, block, by_name, duration, effective_shots) for block in packed]
