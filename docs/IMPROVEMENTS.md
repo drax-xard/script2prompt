@@ -7,9 +7,10 @@ pipeline across all five modes and malformed inputs.
 Severity: **High** = wrong output on common input, **Medium** = wrong output on
 realistic input, **Low** = edge case / robustness / polish.
 
-Status: **B1–B15 are fixed** (see `tests/test_hardening.py`, plus the 0.10.x
-regression tests). **B14** (compound speaker IDs) landed as a feature. The bug
-entries are kept as a record of the issue and the fix applied.
+Status: **B1–B27 are fixed** (see `tests/test_hardening.py`, plus the 0.10.x
+regression tests). **B14** (compound speaker IDs) landed as a feature; **B28–B35
+are open** (third audit). Fixed bug entries are kept as a record of the issue and
+the fix applied.
 
 The 0.10.0 milestone (see `CHANGELOG.md`) also resolved several items from the
 "Improvements" list below (shared soundscape helper, `llm.chat` hardening,
@@ -18,6 +19,14 @@ those entries are marked **[DONE 0.10.0]**.
 
 For the forward-looking, post-v1 plan (Project Manager, ComfyUI, Settings,
 desktop bundle, built-in LLM), see **Post-v1 roadmap (v2)** near the end.
+
+A **third deep audit** (commit `5ecce7c`, 208 tests green, *0.12.0*) re-read every
+module and probed the pipeline across all five modes, malformed inputs, cold
+opens, and split monologues. Its findings are **B28–B35** and the new bullets in
+*Improvements*, *Test gaps*, and *Tooling*. The headline item is **B28**: the
+stable chunk IDs shipped as a v2 prerequisite are **not unique** when a dialogue
+run is split, which would break per-chunk state and manual edits the moment
+persistence lands.
 
 ---
 
@@ -290,6 +299,136 @@ versions/Writers without it), which preserves per-paragraph line breaks. *Big
 Fish* now yields 192 headings (matching the Fountain file), 193 scenes, and 0
 validator issues.
 
+### B28 — [OPEN] High: stable chunk IDs are not unique when a dialogue run is split
+
+`script2prompt/core/chunker.py:218-219` (id) and `:105,143` (cue re-emission).
+
+The v2-prerequisite IDs `"{scene}:{first}-{last}"` are computed from the
+`source_index` range of the elements in each packed chunk. When
+`_split_long_dialogue` breaks a run, it re-emits the **same cue element**
+(`source_index` unchanged) before every continuation piece, so every resulting
+chunk shares the cue's index and the pieces overlap → identical IDs.
+
+Repro:
+
+```
+INT. CELL - NIGHT
+
+MARA
+<60 words>
+```
+
+→ three chunks, all with `id == "1:0-1"` (verified). A long action line plus a
+long monologue yields `1:1-2` repeated ~10×. `manifest.json`,
+`reports/budgets`, and `reference_manifest.json` all inherit the duplicates, so
+chunks cannot be addressed individually — exactly the property the Project
+Manager relies on.
+
+Fix idea: give split pieces a within-element ordinal (`1:1-2#2`) or fold the
+piece ordinal into the ID so the tuple is unique; add a project-wide uniqueness
+assertion + regression test. A provenance-preserving alternative is to keep
+`source_id` (span) and add a separate `piece` field.
+
+### B29 — [OPEN] Medium: R2V cold open with dialogue has no `<Subject 1>` environment
+
+`script2prompt/core/ref_manifest.py:101-115,131-147`.
+
+The guide makes **`<Subject 1>` the scene environment**. `propose` only appends
+the environment subject when the chunk has a slugline (`context`), and the
+"nothing at all" fallback (B17) only triggers when `subjects` is empty. A cold
+open that has dialogue but no slugline therefore numbers the *characters* from
+`<Subject 1>`, with no environment subject:
+
+```
+MARA
+We have to go now.
+LEO
+I know.
+```
+
+→ `<Subject 1> is Mara, the speaker (S1)…`, `<Subject 2> is Leo…`. It validates
+(the validator does not require an environment subject), so the deviation is
+silent.
+
+Fix idea: always emit the environment first (synthesize "on-screen setting" when
+`context` is absent) so character subjects start at `<Subject 2>`.
+
+### B30 — [OPEN] Medium: an invalid configured mode crashes with a misleading error
+
+`script2prompt/__main__.py:39`, `script2prompt/core/pipeline.py:148`,
+`script2prompt/core/fallback.py:227`.
+
+The CLI only guards `--mode` via argparse `choices`; a bad `project.mode` in
+`config.toml` (or a programmatic `pipeline.run(mode="BOGUS")`) reaches
+`fallback.build`, which raises
+`NotImplementedError: fallback.build handles T2VA/I2VA/FL2VA/L2VA only; BOGUS is
+built by core.r2v.build` — a confusing message that points at the wrong place.
+`pipeline.run` clamps `duration`/`shots_max` but never validates `mode`.
+
+Fix idea: validate `mode in h3_spec.MODES` in `pipeline.run` (and
+`default_settings` already does for the UI) with a friendly `ValueError`.
+
+### B31 — [OPEN] Low/Medium: malformed config values surface as raw exceptions
+
+`script2prompt/core/pipeline.py:94-98`, `:152-153`; `script2prompt/core/config.py:29`.
+
+`default_settings`/`run` coerce with `float(...)`/`int(...)` without validation,
+so `duration = "abc"` raises a bare `could not convert string to float: 'abc'`
+(no file/field named), and `shots_max = 2.9` is silently truncated to `2`.
+Config values from TOML are user-editable, so the error message matters.
+
+Fix idea: a small `_as_number`/`_as_int` helper (mirroring `_env_number`) that
+names the offending key and expected type, and rejects non-integral shots.
+
+### B32 — [OPEN] Low: tiny-chunk merge can exceed the requested duration
+
+`script2prompt/core/chunker.py:270-276`.
+
+The tail-merge loop only checks the **10s cap**, not the configured `duration`,
+so a sub-5s tail is merged even when the user asked for smaller chunks:
+`pipeline.run(..., duration=5.0)` on a 3-beat scene yields a single `6.28s`
+chunk (verified). `tests/test_quality.py` asserts the merge, so this is
+intended — but it silently ignores the setting. Either cap the merge at
+`min(duration, CAP_SECONDS)` or surface the overshoot in `budgets`/UI.
+
+### B33 — [OPEN] Low: FDX parser — namespaces, entity expansion, raw parse errors
+
+`script2prompt/parsers/fdx.py:34,55`.
+
+`root.find("Content")` misses a namespaced document (`{ns}Content`), and
+`ET.fromstring` is the classic entity-expansion/XXE surface for stdlib
+ElementTree; malformed XML raises a bare `xml.etree.ElementTree.ParseError`. Low
+risk for a local tool opening the user's own files, but worth hardening.
+
+Fix idea: strip namespaces (`tag.rsplit("}", 1)[-1]`), reject a `<!DOCTYPE`/
+`<!ENTITY` prolog, and wrap the parse in a friendly "not a valid FDX file" error.
+
+### B34 — [OPEN] Low: PDF parser surfaces raw pypdf errors
+
+`script2prompt/parsers/pdf.py:35-36`.
+
+Encrypted, corrupt, or non-PDF files raise pypdf/pdfminer exceptions
+uncaught (the CLI/web then traceback). Wrap in a clear message naming the file
+and the likely cause (encrypted / not a PDF), consistent with the missing-extra
+style.
+
+### B35 — [OPEN] Low: parser heuristic — an ALL-CAPS beat before a non-blank line becomes a cue
+
+`script2prompt/parsers/plaintext.py:61`.
+
+B6 fixed the case where the ALL-CAPS beat is followed by a blank line; the
+lookahead only requires the *next line* to be non-empty, so
+
+```
+THUNDER
+Suddenly, rain pours.
+```
+
+parses as `character THUNDER` + `dialogue "Suddenly, rain pours."` (verified).
+Requiring the next line to "look like dialogue" (e.g. not a new all-caps
+cue/heading, and prefer a following blank line or a second dialogue line) would
+reduce false positives.
+
 ---
 
 ## Improvements (robustness / design)
@@ -326,6 +465,41 @@ validator issues.
 - **[DONE 0.10.x] `plaintext` inline headings.** A slugline-looking line inside
   a dialogue block is now kept as dialogue using dialogue-state context.
 
+Third-audit items (elegance / robustness / future-proofing):
+
+- **Finish the `h3_spec` adoption.** `BASE_MODES`/`KEYFRAME_MODES`/`TASK_TYPES`/
+  `LANGUAGE_TAGS` are defined but unused (`h3_spec.py:18-19,40,48`), while the
+  base-mode tuple is still duplicated as a literal in `fallback.py:227` and
+  `validator.py:46`, `modes.py` uses `("T2VA", "R2V")`, and R2V task types are
+  hardcoded in `ref_manifest.propose` (`:164`) instead of coming from
+  `TASK_TYPES`. Derive them so the "single source of truth" is actually singular.
+- **`pipeline.run` uses a literal `3`** for the shot cap (`pipeline.py:153`)
+  instead of `h3_spec.MAX_SHOTS` (which `default_settings` already uses) — the
+  drift the spec was meant to prevent.
+- **`app/web.py` error handling** (`web.py:49,89-97`): `parse_bytes` failures
+  (bad FDX/PDF, missing pypdf) and LLM endpoint failures are uncaught; an LLM
+  outage silently yields templates with no UI notice. Surface a `st.error`/info
+  and show which chunks used the LLM.
+- **`app/web.py` state hygiene** (`web.py:44,77-82`): bible widget keys
+  (`name0`, `sid0`, …) persist across uploads, so a new script with the same
+  character count inherits stale edits; the parse cache is keyed by
+  `name:size`, which collides for different files of identical name+size. Key
+  by content hash and clear widget keys on upload change.
+- **Performance:** `chunker.chunk` recomputes `estimate(current + block)` for the
+  whole growing pack on every block (O(n²) words for a long scene,
+  `chunker.py:265`); `config.load()` re-reads TOML on every `llm.chat`/`rewrite`
+  call (`config.py:29`, `llm.py:55`) — a `~seconds`-cached `lru_cache` keyed by
+  path+mtime would remove the repeated disk I/O across 100+ chunks.
+- **`write_pack` default leaves stale files** (`pipeline.py:308`): the web "Write
+  pack to ./out" button (`web.py:141`) calls it without `clean=True`, so a
+  smaller re-run keeps orphaned `chunk_NN.txt`. Default the UI (or the function)
+  to clean, or diff old/new.
+- **Typed core / static checking:** modules carry `from __future__ import
+  annotations` and dataclasses, but there is no `mypy`/`pyright` gate, and
+  `Element.kind` (`parsers/base.py:9`) is a bare `str` compared against string
+  literals throughout. A `Literal[...]`/enum plus an optional type-check step
+  would catch kind typos and support the v2 "typed core" direction.
+
 ---
 
 ## Test gaps
@@ -335,7 +509,25 @@ joint speakers, B16–B24 audit fixes, and B26 monologue-cap cases),
 `tests/test_parsers.py` (B16/B21/B27), and `tests/test_quality.py` +
 `tests/test_llm.py` for the 0.10.0 work. `write_pack` clean/overwrite semantics
 and the T2VA empty reference manifest (B23) are covered in
-`tests/test_pipeline.py`. No known open gaps.
+`tests/test_pipeline.py`.
+
+Open gaps found by the third audit (each maps to a fix above):
+
+- **No uniqueness assertion on chunk IDs** — `tests/test_stable_ids.py` checks
+  the *shape* and determinism but never that IDs are unique, which is why **B28**
+  shipped. Add a project-wide "all `stable_id`s distinct" test over a split-
+  monologue script for every mode.
+- **R2V cold open with dialogue** — no test covers a slugline-less chunk that
+  *has* characters (**B29**). Assert `<Subject 1>` is the environment for every
+  R2V chunk.
+- **Invalid config values/mode** — no test for a bad `project.mode` (**B30**) or
+  a non-numeric `duration`/non-integral `shots_max` (**B31**); the CLI test only
+  exercises argparse `choices`.
+- **Web error paths** — `tests/test_web.py` fakes a happy-path upload; it never
+  covers a parse failure or an LLM outage (**web improvements**), nor the
+  stale-widget-key / cache-collision cases.
+- **Parser hardening** — no test for namespaced or malformed FDX (**B33**),
+  encrypted/corrupt PDFs (**B34**), or the no-blank-line ALL-CAPS beat (**B35**).
 
 ## Tooling / repo hygiene
 
@@ -345,6 +537,16 @@ and the T2VA empty reference manifest (B23) are covered in
 - **[DONE 0.10.0] `LICENSE`** — GPL-3.0-or-later.
 - **[DONE] `README.md`** — project overview, install/usage, config, layout.
 - **[DONE 0.10.0] Linter config** — `ruff` via the `dev` extra + `[tool.ruff]`.
+- **Add a static type check** (optional `mypy`/`pyright` dev dep or
+  `ruff`-only) now that the core is annotation-heavy; no gate exists today.
+- **Broaden ruff rules** — current `select` omits `C4`, `PT`, `RUF`, `ANN`,
+  `RET`; enabling a few (at least `RUF`) would catch dead code such as the
+  unused `h3_spec` constants.
+- **PEP 639 license metadata** — `pyproject.toml:7` uses the deprecated
+  `license = { text = ... }` table (setuptools warns); switch to the SPDX string
+  + `license-files`.
+- **`docs/TESTING.md:36`** still says "Expected: `Ran 153 tests`"; the suite is
+  now 208. Update (or drop the hard-coded count).
 
 ---
 
@@ -363,6 +565,10 @@ and the T2VA empty reference manifest (B23) are covered in
    docs). **Done.**
 8. **B26/B27** (real-screenplay test: cumulative monologue split cap, PDF layout
    extraction). **Done.**
+9. **Third audit (open):** fix **B28** first (High — it blocks the v2 Project
+   Manager and invalidates the just-shipped stable-ID feature), then **B29–B31**
+   (Medium), then **B32–B35** (Low) and the *Improvements*/*Tooling* bullets.
+   Add the missing uniqueness/config-mode/web-error tests alongside each fix.
 
 ---
 
