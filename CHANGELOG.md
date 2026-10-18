@@ -39,6 +39,29 @@ not part of MiniMax's published guide, but they are observed to work.
 - `docs/PROJECT_PLAN.md` §2.3: `[Language]`, then optional delivery tags, then
   the verbatim words live inside `<d>`.
 
+Post-v1 prerequisites (see `docs/IMPROVEMENTS.md` §Prerequisites): one spec,
+stable chunk IDs, and a testable state layer, so the upcoming `.s2p` project
+format and a typed core can build on stable primitives.
+
+### Added
+- `core/h3_spec.py`: single source of truth for the H3 rules — modes, field and
+  R2V-section labels, reference kinds, retention markers, language tags and
+  default language, task types, camera motions, cut verbs, and every numeric
+  budget (seconds, shot cap, char budget, sentence caps, words-per-second).
+- Stable chunk IDs of the form `scene_index:first_element-last_element`, stamped
+  per source element in `core/chunker.py` and surfaced on chunks, the manifest,
+  budgets, and the reference manifest (IDs survive a monologue being re-split).
+- `pipeline.default_settings`, `pipeline.bible_rows`, and
+  `pipeline.bible_from_rows`: pure, UI-agnostic project-state helpers.
+
+### Changed
+- `modes`, `chunker`, `validator`, `ref_manifest`, `fallback`, `llm`, and
+  `prompts` now read their thresholds, labels, and vocabulary from `core/h3_spec`
+  instead of repeating literals.
+- `app/web.py` builds settings and the character bible through the new pipeline
+  helpers and caches parsed elements per uploaded file; it no longer duplicates
+  mode/budget defaults or constructs `Character` directly.
+
 ## [0.12.0] - 2026-10-18
 
 Generated-prompt quality pass across the deterministic templates and the LLM

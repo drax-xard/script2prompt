@@ -137,7 +137,8 @@ Full detail in `IMPROVEMENTS.md` § *Post-v1 roadmap (v2)*:
 5. **Built-in LLM** — managed `llama-server` sidecar (reuses `core/llm.py`).
 
 **Later (not v2):** story/book → screenplay (parser + LLM), then feed the
-existing pipeline.
+existing pipeline; multi-model prompt templates (Wan, LTXV, ...); saved LLM
+endpoint presets (llama.cpp, koboldcpp, Ollama, ...).
 
 ## D. Locked decisions (do not relitigate)
 

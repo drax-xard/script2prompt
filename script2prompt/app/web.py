@@ -28,7 +28,7 @@ def main() -> None:
     from script2prompt.core import config as config_mod
     from script2prompt.core import llm, pipeline
     from script2prompt.core import scenes as scenes_mod
-    from script2prompt.core.characters import Character, build_bible, title
+    from script2prompt.core.characters import build_bible
     from script2prompt.core.modes import MODES
 
     cfg = config_mod.load()
@@ -42,24 +42,30 @@ def main() -> None:
         return
 
     fingerprint = f"{uploaded.name}:{uploaded.size}"
-    elements = pipeline.parse_bytes(uploaded.getvalue(), uploaded.name)
-    found = scenes_mod.split(elements)
+    cache = st.session_state.setdefault("_parsed", {})
+    if fingerprint in cache:
+        elements, found = cache[fingerprint]
+    else:
+        elements = pipeline.parse_bytes(uploaded.getvalue(), uploaded.name)
+        found = scenes_mod.split(elements)
+        cache.clear()
+        cache[fingerprint] = (elements, found)
 
+    settings = pipeline.default_settings(cfg)
     left, right = st.columns([1, 2])
     with left:
         st.subheader("Project settings")
-        default_mode = cfg["project"]["mode"]
         mode = st.radio(
             "H3 mode (locked for this project)",
             MODES,
-            index=MODES.index(default_mode) if default_mode in MODES else 0,
+            index=MODES.index(settings["mode"]),
         )
         st.caption(MODE_HELP.get(mode, ""))
-        style = st.text_input("Style", cfg["project"]["style"])
+        style = st.text_input("Style", settings["style"])
         duration = st.slider(
-            "Target chunk seconds", 5.0, 10.0, float(cfg["project"]["duration"]), 0.5
+            "Target chunk seconds", 5.0, 10.0, float(settings["duration"]), 0.5
         )
-        shots_max = st.slider("Max shots per chunk", 1, 3, int(cfg["project"]["shots_max"]))
+        shots_max = st.slider("Max shots per chunk", 1, 3, int(settings["shots_max"]))
         use_llm = st.checkbox("Rewrite with the LLM endpoint (else templates)", value=False)
 
     with right:
@@ -67,13 +73,13 @@ def main() -> None:
         for i, scene in enumerate(found, start=1):
             st.markdown(f"**Scene {i}** — {scene.get('context') or '(cold open)'}")
         st.subheader("Character bible (editable)")
-        bible = []
-        for idx, char in enumerate(build_bible(found)):
+        rows = pipeline.bible_rows(build_bible(found))
+        for idx, row in enumerate(rows):
             cols = st.columns([1, 1, 3])
-            name = cols[0].text_input("Name", title(char.name), key=f"name{idx}")
-            sid = cols[1].text_input("Speaker", char.speaker_id or "", key=f"sid{idx}")
-            desc = cols[2].text_input("Description", char.description, key=f"desc{idx}")
-            bible.append(Character(name.upper(), sid or None, desc))
+            row["name"] = cols[0].text_input("Name", row["name"], key=f"name{idx}")
+            row["speaker_id"] = cols[1].text_input("Speaker", row["speaker_id"], key=f"sid{idx}")
+            row["description"] = cols[2].text_input("Description", row["description"], key=f"desc{idx}")
+        bible = pipeline.bible_from_rows(rows)
 
     if not st.button("Generate prompts", type="primary"):
         project = st.session_state.get("project")

@@ -5,21 +5,9 @@ Exact wording comes from ``docs/H3_Prompting_Docs/`` (official Minimax guides).
 """
 from __future__ import annotations
 
-MODES = ("T2VA", "I2VA", "FL2VA", "L2VA", "R2V")
+from .h3_spec import BASE_FIELDS, MODES, R2V_SECTIONS
 
-BASE_FIELDS = (
-    "integrated_multimodal_description:",
-    "overall_soundscape:",
-    "non_diegetic_music:",
-)
-R2V_SECTIONS = (
-    "subject_definitions:",
-    "summary:",
-    "retention_analysis:",
-    "detailed_description:",
-    "overall_soundscape:",
-    "non_diegetic_music:",
-)
+__all__ = ["BASE_FIELDS", "MODES", "R2V_SECTIONS", "instruction_line"]
 
 
 def instruction_line(mode: str, final_shot: int = 1, duration: float = 8.0) -> str:

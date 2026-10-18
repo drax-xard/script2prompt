@@ -20,6 +20,7 @@ from script2prompt.parsers.base import Element
 from . import chunker, h3_builder, ref_manifest, validator
 from . import scenes as scenes_mod
 from .characters import Character, build_bible, title
+from .h3_spec import MAX_SHOTS, MODES
 from .modes import instruction_line
 
 # Schema version stamped on every persisted artifact (manifest.json,
@@ -61,6 +62,7 @@ def load_artifact(path: str | Path) -> dict:
 @dataclass
 class ChunkResult:
     index: int
+    stable_id: str
     scene: str
     chunk: dict
     prompt: str
@@ -76,6 +78,59 @@ class Project:
     scenes: list[dict]
     bible: list[Character]
     results: list[ChunkResult]
+
+
+def default_settings(cfg: dict) -> dict:
+    """Project settings from config, mode/budget-normalized (UI-agnostic).
+
+    Keeps the Streamlit wizard and any future UI on the same clamped values the
+    pipeline enforces, instead of each widget re-deriving its own defaults.
+    """
+    project = cfg.get("project", {})
+    mode = project.get("mode", "T2VA")
+    return {
+        "mode": mode if mode in MODES else "T2VA",
+        "style": project.get("style", "Live-action, cinematic"),
+        "duration": min(
+            max(float(project.get("duration", 8.0)), chunker.MIN_SECONDS),
+            chunker.CAP_SECONDS,
+        ),
+        "shots_max": min(max(int(project.get("shots_max", 3)), 1), MAX_SHOTS),
+        "use_llm": False,
+    }
+
+
+def bible_rows(bible: list[Character]) -> list[dict]:
+    """Editable rows for the character-bible UI (display name title-cased)."""
+    return [
+        {
+            "name": title(char.name),
+            "speaker_id": char.speaker_id or "",
+            "description": char.description,
+        }
+        for char in bible
+    ]
+
+
+def bible_from_rows(rows: list[dict]) -> list[Character]:
+    """Rebuild the bible from edited rows; names normalize to their cue form.
+
+    Inverse of :func:`bible_rows`, so the wizard's text inputs (and tests) can
+    round-trip a bible without touching Streamlit.
+    """
+    bible: list[Character] = []
+    for row in rows:
+        name = str(row.get("name", "")).strip()
+        if not name:
+            continue
+        bible.append(
+            Character(
+                name.upper(),
+                str(row.get("speaker_id") or "").strip() or None,
+                str(row.get("description", "")).strip(),
+            )
+        )
+    return bible
 
 
 def parse_bytes(data: bytes, filename: str) -> list[Element]:
@@ -106,7 +161,9 @@ def run(elements: list[Element], *, mode: str = "T2VA", duration: float = 8.0,
             index += 1
             prompt = h3_builder.build(chunk, bible, mode=mode, style=style, rewrite=rewrite)
             issues = validator.validate(prompt, mode=mode, duration=chunk["duration"], bible=bible)
-            results.append(ChunkResult(index, scene.get("context", ""), chunk, prompt, issues))
+            results.append(
+                ChunkResult(index, chunk["id"], scene.get("context", ""), chunk, prompt, issues)
+            )
     return Project(mode, duration, shots_max, style, found, bible, results)
 
 
@@ -118,6 +175,7 @@ def budgets(project: Project) -> dict:
         chunks.append(
             {
                 "index": res.index,
+                "id": res.stable_id,
                 "chars": size,
                 "char_budget": validator.CHAR_BUDGET,
                 "char_ratio": round(size / validator.CHAR_BUDGET, 3),
@@ -190,6 +248,7 @@ def manifest(project: Project) -> dict:
         "chunks": [
             {
                 "index": res.index,
+                "id": res.stable_id,
                 "scene": res.scene,
                 "duration": res.chunk["duration"],
                 "shots": [{"start": shot["start"]} for shot in res.chunk["shots"]],
@@ -214,6 +273,7 @@ def reference_manifest(project: Project) -> dict:
         final_shot = max(len(res.chunk["shots"]), 1)
         entry: dict = {
             "index": res.index,
+            "id": res.stable_id,
             "instruction_line": instruction_line(
                 project.mode, final_shot=final_shot, duration=res.chunk["duration"]
             ),

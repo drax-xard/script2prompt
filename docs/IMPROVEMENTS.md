@@ -394,17 +394,21 @@ flagged above.
   with forward-compatible loaders and migrations (`pipeline.SCHEMA_VERSION`,
   `migrate_artifact`, `load_artifact`). The project file will reuse the same
   helper. (`IMPROVEMENTS.md` "Improvements".)
-- **Single source of truth for H3 rules** — extract a `core/h3_spec.py` holding
+- **[DONE]** **Single source of truth for H3 rules** — `core/h3_spec.py` holds
   the camera vocabulary, cut verbs, language tags, section labels, retention
-  markers, budgets (5–10s, ≤3 shots, 7000-char cap). Kills the drift risk between
-  `core/prompts.py` (prose) and `core/validator.py` (constants); Settings can
-  display it read-only and gate overrides.
-- **Stable chunk IDs** — `"{scene_index}:{first_element_index}-{last_element_index}"`
-  so manual edits survive re-parse; a source-hash change marks stale chunks
-  instead of discarding work.
-- **Testable state layer** — all Project Manager / library / ComfyUI logic lives
-  in `core/` (stdlib `unittest`), never in `app/web.py` (currently untestable
-  without Streamlit).
+  markers, and budgets (5–10s, ≤3 shots, 7000-char cap). `prompts.py` (prose),
+  `validator.py` (constants), `chunker.py`, `ref_manifest.py`, `fallback.py`,
+  `llm.py`, and `modes.py` derive from it, so the drift risk is gone; Settings
+  can display it read-only and gate overrides. (`tests/test_h3_spec.py`.)
+- **[DONE]** **Stable chunk IDs** — `"{scene_index}:{first_element_index}-{last_element_index}"`,
+  stamped per source element in `core/chunker.py` and surfaced on chunks, the
+  manifest, budgets, and the reference manifest, so manual edits can survive a
+  re-parse. (Marking a source-hash change as stale is still a v2 concern.)
+  (`tests/test_stable_ids.py`.)
+- **[DONE]** **Testable state layer** — the pure project-state helpers
+  (`pipeline.default_settings`, `pipeline.bible_rows`, `pipeline.bible_from_rows`)
+  live in `core/`; `app/web.py` is a thin presenter over them and caches parsed
+  elements per uploaded file. (`tests/test_state.py`.)
 
 ---
 
@@ -588,6 +592,26 @@ Manager and ComfyUI loop are stable.
 
 ---
 
+### Later (not v2): multi-model prompt templates
+
+Offer prompt templates for video models beyond Minimax H3 (Wan, LTXV, ...).
+Generalize `core/h3_spec.py` + `core/prompts.py` into a per-backend spec/template
+set selected in project settings, with the chunker/validator staying H3-specific
+behind that boundary. Explicitly **out of scope for v2**; revisit once H3 is
+stable.
+
+---
+
+### Later (not v2): saved LLM endpoint presets
+
+Let Settings store several named LLM endpoint presets (base URL, model,
+temperature, timeout, thinking toggle) for common servers — llama.cpp,
+koboldcpp, Ollama, etc. — and switch between them without editing env vars.
+`core/config.py` would gain a named-preset table layered under the existing
+precedence. Explicitly **out of scope for v2**.
+
+---
+
 ### Sequencing summary
 
 1. Prereqs: `schema_version`, stable chunk IDs, `core/h3_spec.py`, testable
@@ -600,6 +624,8 @@ Manager and ComfyUI loop are stable.
    rewrite).
 6. **Built-in LLM** (`llama-server` sidecar).
 7. Later: story/book → screenplay.
+8. Later: multi-model prompt templates (Wan, LTXV, ...).
+9. Later: saved LLM endpoint presets (llama.cpp, koboldcpp, Ollama, ...).
 
 ### Risks
 

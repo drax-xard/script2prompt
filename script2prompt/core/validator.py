@@ -11,16 +11,26 @@ from __future__ import annotations
 
 import re
 
-from .modes import BASE_FIELDS, R2V_SECTIONS, instruction_line
+from .h3_spec import (
+    AUDIO_MARKERS,
+    BASE_FIELDS,
+    CHAR_BUDGET,
+    MAX_SHOTS,
+    MUSIC_SENTENCES,
+    R2V_SECTIONS,
+    REFERENCE_KINDS,
+    SOUNDSCAPE_SENTENCES,
+    VISUAL_MARKERS,
+)
+from .modes import instruction_line
 
-CHAR_BUDGET = 7000
 SHOT_STAMP = re.compile(r"\[Shot (\d+)\] At (\d{2}):(\d{2})\.(\d{3})")
 SHOT_ANY = re.compile(r"\[Shot (\d+)\]")
-LABEL_USE = re.compile(r"<(Subject|Picture|Video|Audio) (\d+)>")
+LABEL_USE = re.compile(rf"<({'|'.join(REFERENCE_KINDS)}) (\d+)>")
 SPEAKER_ID = re.compile(r"\(S\d+(?:,S\d+)*\)")
-VISUAL_MARKERS = frozenset({"fully_preserved", "partially_preserved", "attribute_transfer", "weak_reference"})
-AUDIO_MARKERS = frozenset({"fully_copy", "partially_copy", "reference", "weak_reference"})
 FIELDS = BASE_FIELDS
+_LO, _HI = SOUNDSCAPE_SENTENCES
+_MUSIC_LO, _MUSIC_HI = MUSIC_SENTENCES
 
 
 def _sentences(text: str) -> list[str]:
@@ -84,8 +94,8 @@ def _check_shots(body: str, duration: float) -> list[str]:
         issues.append("[Shot 1] must open the description")
     if numbers != list(range(1, len(numbers) + 1)):
         issues.append("shot numbers must be sequential from 1")
-    if len(numbers) > 3:
-        issues.append("more than 3 shots in one prompt")
+    if len(numbers) > MAX_SHOTS:
+        issues.append(f"more than {MAX_SHOTS} shots in one prompt")
     if re.search(r"\[Shot 1\] At ", body):
         issues.append("[Shot 1] must not have a timestamp")
 
@@ -130,16 +140,16 @@ def _check_soundscape(text: str) -> list[str]:
     issues: list[str] = []
     if text != "N/A":
         count = len(_sentences(text))
-        if not 1 <= count <= 4:
-            issues.append("overall_soundscape must be 1-4 sentences")
+        if not _LO <= count <= _HI:
+            issues.append(f"overall_soundscape must be {_LO}-{_HI} sentences")
         if "<d>" in text:
             issues.append("overall_soundscape must not contain dialogue")
     return issues
 
 
 def _check_music(text: str) -> list[str]:
-    if text != "N/A" and not 1 <= len(_sentences(text)) <= 3:
-        return ["non_diegetic_music must be 1-3 sentences or N/A"]
+    if text != "N/A" and not _MUSIC_LO <= len(_sentences(text)) <= _MUSIC_HI:
+        return [f"non_diegetic_music must be {_MUSIC_LO}-{_MUSIC_HI} sentences or N/A"]
     return []
 
 
@@ -165,7 +175,7 @@ def _validate_r2v(prompt: str, duration: float, bible: list | None = None) -> li
     definitions = _section(prompt, "subject_definitions:", R2V_SECTIONS[1:])
     defined = set()
     for line in definitions.splitlines():
-        opened = re.match(r"<(Subject|Picture|Video|Audio) (\d+)>", line.strip())
+        opened = LABEL_USE.match(line.strip())
         if opened:
             defined.add(f"<{opened.group(1)} {opened.group(2)}>")
     if not defined:

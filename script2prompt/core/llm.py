@@ -17,6 +17,13 @@ import urllib.request
 from . import delivery, prompts, validator
 from .characters import Character, title
 from .config import load
+from .h3_spec import (
+    BASE_FIELDS,
+    DEFAULT_LANGUAGE,
+    MUSIC_SENTENCES,
+    R2V_SECTIONS,
+    SOUNDSCAPE_SENTENCES,
+)
 from .modes import instruction_line
 from .ref_manifest import propose
 from .render import scene_phrase
@@ -169,15 +176,7 @@ def _user_content(chunk: dict, bible: list[Character], mode: str, style: str,
     return "\n".join(parts)
 
 
-_FIELD_LABELS = (
-    "integrated_multimodal_description:",
-    "overall_soundscape:",
-    "non_diegetic_music:",
-    "subject_definitions:",
-    "summary:",
-    "retention_analysis:",
-    "detailed_description:",
-)
+_FIELD_LABELS = BASE_FIELDS + tuple(s for s in R2V_SECTIONS if s not in BASE_FIELDS)
 
 
 def _fmt_time(seconds: float) -> str:
@@ -338,15 +337,15 @@ def sanitize(prompt: str) -> str:
         body = match.group(1)
         if re.match(r"\s*\[[^\]]+\]", body):
             return match.group(0)
-        return f"<d>[English]{body}</d>"
+        return f"<d>[{DEFAULT_LANGUAGE}]{body}</d>"
 
     prompt = re.sub(r"<d>(.*?)</d>", _tag, prompt, flags=re.S)
     prompt = _normalize_inline_tags(prompt)
     prompt = _balance_wrap_tags(prompt)
     prompt = _normalize_timestamps(prompt)
     prompt = _reattach_dialogue(prompt)
-    prompt = _cap_audio_field(prompt, "overall_soundscape:", 4)
-    return _cap_audio_field(prompt, "non_diegetic_music:", 3)
+    prompt = _cap_audio_field(prompt, "overall_soundscape:", SOUNDSCAPE_SENTENCES[1])
+    return _cap_audio_field(prompt, "non_diegetic_music:", MUSIC_SENTENCES[1])
 
 
 def messages(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
@@ -390,7 +389,7 @@ def rewrite(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
                     "That prompt failed validation: " + "; ".join(best_issues) + ". "
                     "Reply with ONLY the corrected prompt, keeping each field label "
                     "alone on its own line and dialogue as Name (S1) says "
-                    "<d>[English]words</d>."
+                    f"<d>[{DEFAULT_LANGUAGE}]words</d>."
                 ),
             },
         ]

@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 
 from .characters import Character, split_joint, title
+from .h3_spec import DEFAULT_LANGUAGE
 
 TIMBRE_ROLE = "voice-timbre reference"
 
@@ -156,7 +157,7 @@ def propose(chunk: dict, bible: list[Character] = ()) -> dict:
                 "role": TIMBRE_ROLE,
                 "subject": by_name.get(char.name, ""),
                 "speaker_id": char.speaker_id,
-                "language": "English",
+                "language": DEFAULT_LANGUAGE,
                 "source": "placeholder — attach a voice sample",
             }
         )

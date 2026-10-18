@@ -15,6 +15,7 @@ from script2prompt.parsers.base import Element
 from .characters import Character, split_joint, title
 from .chunker import split_sentences
 from .delivery import apply_tags
+from .h3_spec import DEFAULT_LANGUAGE
 from .modes import instruction_line
 from .render import (
     camera_sentence,
@@ -103,7 +104,7 @@ def _render_dialogue(words: str, head: str, voiceover: bool, mark: str,
     body = clean(words)
     if delivery:
         body = apply_tags(body, delivery)
-    tag = f"<d>[English]{body}</d>."
+    tag = f"<d>[{DEFAULT_LANGUAGE}]{body}</d>."
     if voiceover:
         line = f"{head} says in an off-screen voiceover: {tag} {head}'s lips remain completely closed."
     else:

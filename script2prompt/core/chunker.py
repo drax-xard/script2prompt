@@ -20,11 +20,8 @@ import re
 from script2prompt.parsers.base import Element
 
 from .characters import Character, split_joint
+from .h3_spec import ACTION_WPS, CAP_SECONDS, DIALOGUE_WPS, MIN_SECONDS
 
-CAP_SECONDS = 10.0
-MIN_SECONDS = 5.0
-DIALOGUE_WPS = 2.75
-ACTION_WPS = 0.16
 PIECE_WORDS = 18
 # Longest monologue that still fits the 10s cap after the 1.0s overhead.
 MONOLOGUE_WORDS = int((CAP_SECONDS - 1.0) * DIALOGUE_WPS)
@@ -179,6 +176,21 @@ def _split_long_action(elements: list[Element]) -> list[Element]:
     return out
 
 
+def _stamped(elements: list[Element]) -> list[Element]:
+    """Copy elements with a stable ``source_index`` meta (position in the scene).
+
+    Splitting preserves the meta, so every split piece still points back at the
+    source element it came from; that is what makes chunk IDs survive a re-parse
+    even when a monologue is re-split.
+    """
+    stamped: list[Element] = []
+    for i, el in enumerate(elements):
+        meta = dict(el.meta)
+        meta.setdefault("source_index", i)
+        stamped.append(Element(el.kind, el.text, meta))
+    return stamped
+
+
 def _blocks(elements: list[Element]) -> list[list[Element]]:
     """Group elements so a character cue stays with its lines.
 
@@ -203,6 +215,8 @@ def _make_chunk(scene: dict, elements: list[Element], by_name: dict[str, Charact
                 duration: float, shots_max: int) -> dict:
     est = estimate(elements)
     clamped = min(max(est, MIN_SECONDS), CAP_SECONDS)
+    indices = [int(el.meta.get("source_index", i)) for i, el in enumerate(elements)]
+    stable_id = f"{scene.get('index', 0)}:{min(indices)}-{max(indices)}"
     groups: list[list[Element]] = [[]]
     for el in elements:
         if el.kind == "character" and groups[-1] and len(groups) < shots_max:
@@ -218,6 +232,7 @@ def _make_chunk(scene: dict, elements: list[Element], by_name: dict[str, Charact
                 if name and name not in speakers:
                     speakers[name] = by_name.get(name, Character(name, None, ""))
     return {
+        "id": stable_id,
         "context": scene.get("context", ""),
         "elements": elements,
         "duration": round(clamped, 3),
@@ -235,7 +250,8 @@ def chunk(scene: dict, bible: list[Character] = (), duration: float = 8.0,
     """
     by_name = {c.name: c for c in bible}
     effective_shots = 1 if mode == "FL2VA" else shots_max
-    elements = _split_long_dialogue(scene.get("elements", []))
+    elements = _stamped(scene.get("elements", []))
+    elements = _split_long_dialogue(elements)
     elements = _split_long_action(elements)
     packed: list[list[Element]] = []
     current: list[Element] = []
