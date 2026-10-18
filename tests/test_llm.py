@@ -128,6 +128,26 @@ class TestSanitize(unittest.TestCase):
         body = out.split("overall_soundscape:\n")[1].split("\nnon_diegetic_music:")[0]
         self.assertEqual(body, "One. Two. Three. Four.")
 
+    def test_invented_tag_is_remapped(self) -> None:
+        out = llm.sanitize("A (S1) says <d>[English]<beat>Okay.</d>.")
+        self.assertIn("<d>[English]<pause>Okay.</d>", out)
+
+    def test_unknown_tag_is_dropped(self) -> None:
+        out = llm.sanitize("A (S1) says <d>[English]<growling>Out.</d>.")
+        self.assertIn("<d>[English]Out.</d>", out)
+
+    def test_cutoff_tag_is_kept(self) -> None:
+        out = llm.sanitize("A (S1) says <d>[English]Wait<cutoff></d>.")
+        self.assertIn("<cutoff>", out)
+
+    def test_unclosed_wrap_tag_is_closed(self) -> None:
+        out = llm.sanitize("A (S1) says <d>[English]<whisper> hush.</d>.")
+        self.assertIn("<whisper> hush.</whisper></d>", out)
+
+    def test_balanced_wrap_tag_untouched(self) -> None:
+        out = llm.sanitize("A (S1) says <d>[English]I will <i>not</i> go.</d>.")
+        self.assertIn("<i>not</i> go.</d>", out)
+
     def test_seconds_timestamp_normalized(self) -> None:
         out = llm.sanitize("[Shot 2] At 3.87s, the camera cuts.")
         self.assertEqual(out, "[Shot 2] At 00:03.870, the camera cuts.")

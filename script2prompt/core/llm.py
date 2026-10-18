@@ -14,7 +14,7 @@ import time
 import urllib.error
 import urllib.request
 
-from . import prompts, validator
+from . import delivery, prompts, validator
 from .characters import Character, title
 from .config import load
 from .modes import instruction_line
@@ -247,6 +247,56 @@ def _reattach_dialogue(prompt: str) -> str:
     return head + "\n".join(kept)
 
 
+_WRAP_NAMES = tuple(tag[1:-1] for tag in delivery.WRAP_TAGS)
+_INLINE_TAGS = set(delivery.ALL_TAGS) | {f"</{name}>" for name in _WRAP_NAMES}
+_INLINE_TAGS |= {"<cutoff>", "<scenetrans>"}  # official guide tags, kept as-is
+_INLINE_SYNONYMS = {
+    "<beat>": "<pause>", "<sigh>": "<sighs>", "<laugh>": "<laughs>",
+    "<laughing>": "<laughs>", "<chuckles>": "<chuckle>", "<whispers>": "<whisper>",
+    "<cough>": "<coughs>", "<sniffs>": "<sniff>", "<gasps>": "<gasp>",
+    "<clears-throat>": "<clears throat>", "<hesitates>": "<uh>",
+}
+_INLINE_TAGS_LOWER = {tag.lower() for tag in _INLINE_TAGS}
+
+
+def _normalize_inline_tags(prompt: str) -> str:
+    """Keep only known tags inside ``<d>`` blocks.
+
+    Small models invent tags (``<beat>``, ``<laugh>``) that are not in the
+    community set. Known synonyms are remapped; anything else is dropped so an
+    unknown tag can never leak into the prompt.
+    """
+    def _repl(tag: re.Match) -> str:
+        lowered = tag.group(0).lower()
+        if lowered in _INLINE_SYNONYMS:
+            return _INLINE_SYNONYMS[lowered]
+        return tag.group(0) if lowered in _INLINE_TAGS_LOWER else ""
+
+    def _fix(match: re.Match) -> str:
+        body = re.sub(r"</?[a-z][a-z0-9 _-]*>", _repl, match.group(1), flags=re.I)
+        return f"<d>{body}</d>"
+
+    return re.sub(r"<d>(.*?)</d>", _fix, prompt, flags=re.S)
+
+
+def _balance_wrap_tags(prompt: str) -> str:
+    """Close any delivery wrap tag left open inside a ``<d>`` block.
+
+    Models often write ``<whisper> ... </d>.`` (or ``<i>word</d>``); the
+    reference examples always close the tag, so a matching close is appended
+    before ``</d>`` when missing.
+    """
+    def _fix(match: re.Match) -> str:
+        body = match.group(1)
+        for name in _WRAP_NAMES:
+            opens, closes = body.count(f"<{name}>"), body.count(f"</{name}>")
+            if opens > closes:
+                body += f"</{name}>" * (opens - closes)
+        return f"<d>{body}</d>"
+
+    return re.sub(r"<d>(.*?)</d>", _fix, prompt, flags=re.S)
+
+
 def _cap_sentences(segment: str, cap: int) -> str:
     """Trim a field body to at most ``cap`` sentences, keeping surrounding whitespace."""
     match = re.match(r"(\s*)(.*?)(\s*)$", segment, re.S)
@@ -291,6 +341,8 @@ def sanitize(prompt: str) -> str:
         return f"<d>[English]{body}</d>"
 
     prompt = re.sub(r"<d>(.*?)</d>", _tag, prompt, flags=re.S)
+    prompt = _normalize_inline_tags(prompt)
+    prompt = _balance_wrap_tags(prompt)
     prompt = _normalize_timestamps(prompt)
     prompt = _reattach_dialogue(prompt)
     prompt = _cap_audio_field(prompt, "overall_soundscape:", 4)

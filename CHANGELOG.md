@@ -14,6 +14,31 @@ Versioning practices:
 - Each release gets a dated section below with `Added / Changed / Fixed / Removed` entries
   and (once published) a version tag `vX.Y.Z` plus a GitHub release.
 
+## [Unreleased]
+
+Community dialogue delivery tags — nuance tags placed inside `<d>...</d>`
+(pauses, breath, emphasis, non-verbal sounds). These are a community finding,
+not part of MiniMax's published guide, but they are observed to work.
+
+### Added
+- `core/delivery.py`: the delivery-tag table plus a parenthetical→tag map and
+  `apply_tags`, so a cued delivery becomes a tag inside `<d>`.
+- `docs/H3_Prompting_Docs/Dialogue_Delivery_Tags.md`: reference table with the
+  community caveat, placement rules, and how the tool uses them.
+- Deterministic builders insert tags when a screenplay parenthetical clearly
+  cues a delivery (`(beat)`→`<pause>`, `(whispering)`→`<whisper>…</whisper>`,
+  `(sighs)`→`<sighs>`, `(softly)`→`<softer>`); ambiguous notes (`(V.O.)`,
+  `(CONT'D)`, `(to Will)`) stay untagged.
+- LLM system prompts list the tags and instruct the model to use them only when
+  the script cues the delivery.
+- `tests/test_delivery.py`, plus `sanitize` coverage for tag normalization.
+
+### Changed
+- `core/llm.py` `sanitize`: remap invented tags (`<beat>`→`<pause>`, `<laugh>`→
+  `<laughs>`), drop unknown tags inside `<d>`, and close wrap tags left open.
+- `docs/PROJECT_PLAN.md` §2.3: `[Language]`, then optional delivery tags, then
+  the verbatim words live inside `<d>`.
+
 ## [0.12.0] - 2026-10-18
 
 Generated-prompt quality pass across the deterministic templates and the LLM

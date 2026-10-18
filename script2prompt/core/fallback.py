@@ -14,6 +14,7 @@ from script2prompt.parsers.base import Element
 
 from .characters import Character, split_joint, title
 from .chunker import split_sentences
+from .delivery import apply_tags
 from .modes import instruction_line
 from .render import (
     camera_sentence,
@@ -94,11 +95,15 @@ def _joint_head(names: list[str], speakers: dict[str, Character], mentioned: set
 
 
 def _render_dialogue(words: str, head: str, voiceover: bool, mark: str,
-                     plural: bool = False) -> str:
+                     plural: bool = False, delivery: str = "") -> str:
     # Plain form matches Example_Text2Video_Prompt.txt: no colon after "says",
     # no space after the language tag, terminal period outside </d>.
-    # Voiceover keeps the guide's fixed phrase (with colon).
-    tag = f"<d>[English]{clean(words)}</d>."
+    # Voiceover keeps the guide's fixed phrase (with colon). A parenthetical
+    # that cues delivery contributes a community tag inside <d>.
+    body = clean(words)
+    if delivery:
+        body = apply_tags(body, delivery)
+    tag = f"<d>[English]{body}</d>."
     if voiceover:
         line = f"{head} says in an off-screen voiceover: {tag} {head}'s lips remain completely closed."
     else:
@@ -153,6 +158,7 @@ def _shot_text(elements: list[Element], speakers: dict[str, Character],
                 _render_dialogue(
                     el.text, head, _is_voiceover(ext, delivery),
                     el.meta.get("scenetrans", ""), plural=len(joint) > 1,
+                    delivery=delivery,
                 )
             )
             delivery = ""

@@ -33,9 +33,19 @@ Hard rules:
   movement between shots; do not repeat the same motion in every shot.
 - Speakers use stable IDs: S1 is the first voice, S2 the next, and characters
   who never vocalize get no ID. On first appearance add a short identifying
-  phrase taken from the script (age, role, or look). Keep the delivery and ID
-  outside <d>; keep the language tag and the verbatim words inside.
+  phrase taken from the script (age, role, or look). Keep the speaker ID and any
+  descriptive delivery note outside <d>; keep the language tag, optional delivery
+  tags, and the verbatim words inside.
   Plain form: Name (S1) says <d>[English]words</d>.
+- When the script's parenthetical or action clearly cues a delivery, add a
+  community delivery tag inside <d>, right after the language tag. Leading tags:
+  <pause>, <long pause>, <breath>, <inhale>, <exhale>, <catches breath>,
+  <deep breath>, <softer>, <stutter>, <uh>, <laughs>, <chuckle>, <sighs>,
+  <gasp>, <coughs>, <clears throat>, <sniff>, <mhm>, <phew>. Wrapping tags:
+  <whisper>...</whisper>, <humming>...</humming>, <i>...</i> (emphasis on 1-4
+  words). Examples: <d>[English]<inhale> Alright, let's do this.</d> and
+  <d>[English]I will <i>not</i> tolerate this.</d>. Use them ONLY when the script
+  cues that delivery; never invent tags or add them to untagged lines.
 - Voiceover uses the exact phrase "says in an off-screen voiceover" and states
   that the on-screen character's lips remain completely closed.
 - Preserve the script's tone (genre, pace, mood); match it in word choice and
@@ -126,8 +136,14 @@ Hard rules:
   Describe the setting naturally; never emit the raw slugline or transitions.
   Vary camera motion between shots rather than repeating one movement.
 - Dialogue keeps the script's exact words and punctuation inside <d>...</d> with
-  the language tag, e.g. Name (S1) says <d>[English]words</d>. Keep delivery and
-  speaker IDs outside <d>.
+  the language tag, e.g. Name (S1) says <d>[English]words</d>. Keep the speaker
+  ID and descriptive delivery outside <d>.
+- When the script clearly cues a delivery, add a community delivery tag inside
+  <d> after the language tag: leading <pause>, <long pause>, <breath>, <inhale>,
+  <exhale>, <catches breath>, <deep breath>, <softer>, <stutter>, <uh>,
+  <laughs>, <chuckle>, <sighs>, <gasp>, <coughs>, <clears throat>, <sniff>,
+  <mhm>, <phew>; wrapping <whisper>...</whisper>, <humming>...</humming>,
+  <i>...</i>. Use them ONLY when the script cues that delivery.
 - overall_soundscape: 1-4 sentences of ambient, action, and non-verbal sound
   only; it must NEVER contain dialogue. Use N/A only for total silence.
 - non_diegetic_music: 1-3 sentences in viewer-only terms, or N/A.
