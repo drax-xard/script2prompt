@@ -31,7 +31,7 @@ rewrite, verified end-to-end against a local reasoning-model endpoint.
   validate→repair loop (`llm.fix_attempts`), and `sanitize` to repair the
   format deviations small models make (inlined field labels, mis-placed dialogue
   language tags, dialogue stranded after `non_diegetic_music`, over-long audio
-  fields).
+  fields, and cut times like `At 3.87s` normalized to `MM:SS.mmm`).
 - `core/llm.py`: `llm.disable_thinking` (default `true`) sends
   `chat_template_kwargs: {enable_thinking: false}` so reasoning models (Qwen3
   etc. via koboldcpp) don't spend the whole token budget on a chain-of-thought

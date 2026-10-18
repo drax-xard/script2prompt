@@ -128,6 +128,18 @@ class TestSanitize(unittest.TestCase):
         body = out.split("overall_soundscape:\n")[1].split("\nnon_diegetic_music:")[0]
         self.assertEqual(body, "One. Two. Three. Four.")
 
+    def test_seconds_timestamp_normalized(self) -> None:
+        out = llm.sanitize("[Shot 2] At 3.87s, the camera cuts.")
+        self.assertEqual(out, "[Shot 2] At 00:03.870, the camera cuts.")
+
+    def test_short_timestamp_padded(self) -> None:
+        out = llm.sanitize("[Shot 2] At 0:3.5, the camera cuts.")
+        self.assertEqual(out, "[Shot 2] At 00:03.500, the camera cuts.")
+
+    def test_shot1_timestamp_stripped(self) -> None:
+        out = llm.sanitize("[Shot 1] At 00:02.000, a shot.")
+        self.assertEqual(out, "[Shot 1] a shot.")
+
     def test_sanitized_prompt_validates(self) -> None:
         from script2prompt.core import validator
 

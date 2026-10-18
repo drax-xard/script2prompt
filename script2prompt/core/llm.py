@@ -180,6 +180,38 @@ _FIELD_LABELS = (
 )
 
 
+def _fmt_time(seconds: float) -> str:
+    """Format a cut time as the guide's ``MM:SS.mmm``."""
+    total_ms = round(seconds * 1000)
+    minutes, rem = divmod(total_ms, 60000)
+    secs, millis = divmod(rem, 1000)
+    return f"{minutes:02d}:{secs:02d}.{millis:03d}"
+
+
+def _normalize_timestamps(prompt: str) -> str:
+    """Rewrite any ``[Shot N] At <time>`` cut time into ``MM:SS.mmm``.
+
+    Small models emit ``At 3.87s`` or ``At 0:03.5``; the validator (and guide)
+    require zero-padded ``MM:SS.mmm``. ``[Shot 1]`` must carry no timestamp, so
+    one is stripped if present.
+    """
+    time = r"(\d+(?::\d+){0,2}(?:\.\d+)?)\s*(?:s|sec|secs|seconds?)?\b"
+
+    def _repl(match: re.Match) -> str:
+        head, raw = match.group(1), match.group(2)
+        parts = raw.split(":")
+        if len(parts) == 3:
+            secs = int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+        elif len(parts) == 2:
+            secs = int(parts[0]) * 60 + float(parts[1])
+        else:
+            secs = float(parts[0])
+        return f"{head}At {_fmt_time(secs)}"
+
+    prompt = re.sub(rf"(\[Shot \d+\] )At {time}", _repl, prompt)
+    return re.sub(r"\[Shot 1\] At \d{2}:\d{2}\.\d{3}[,]?\s*", "[Shot 1] ", prompt)
+
+
 def _section_end(prompt: str, label: str) -> int | None:
     """End offset of a field label that sits alone on its own line."""
     match = re.search(rf"(?m)^{re.escape(label)}[ \t]*$", prompt)
@@ -259,6 +291,7 @@ def sanitize(prompt: str) -> str:
         return f"<d>[English]{body}</d>"
 
     prompt = re.sub(r"<d>(.*?)</d>", _tag, prompt, flags=re.S)
+    prompt = _normalize_timestamps(prompt)
     prompt = _reattach_dialogue(prompt)
     prompt = _cap_audio_field(prompt, "overall_soundscape:", 4)
     return _cap_audio_field(prompt, "non_diegetic_music:", 3)
