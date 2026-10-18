@@ -34,7 +34,7 @@ that the parsers agree scene-for-scene.
 ## Using it
 
 A full feature is far larger than the bundled `samples/one_page.txt`, so run it
-straight through the CLI (see `README.md` / `TESTING.md`), e.g.:
+straight through the CLI (see `README.md` / `docs/TESTING.md`), e.g.:
 
 ```sh
 .venv/bin/python -m script2prompt samples/Big_Fish/Big-Fish.fountain -o out/bigfish

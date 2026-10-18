@@ -1,4 +1,4 @@
-"""Regression tests for the deep-audit bug fixes (see IMPROVEMENTS.md)."""
+"""Regression tests for the deep-audit bug fixes (see docs/IMPROVEMENTS.md)."""
 from __future__ import annotations
 
 import json

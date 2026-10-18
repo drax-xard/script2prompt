@@ -1,6 +1,6 @@
 """Chunker: pack scene beats into <=10s, <=3-shot chunks.
 
-Duration estimate per PROJECT_PLAN.md §4:
+Duration estimate per docs/PROJECT_PLAN.md §4:
 ``action_words / 2.5 * 0.4 + dialogue_words / 2.75 + 1.0s overhead``.
 Dialogue that overruns the 10s cap is pre-split at sentence boundaries (<=18
 words per piece) with ``scenetrans`` markers for the builder. The overrun is

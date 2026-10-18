@@ -7,7 +7,7 @@ prompt per 5–10s chunk, with a consistent character bible.
 **Status: `0.11.1` (pre-1.0).** All core features and all five H3 modes are
 implemented, tested, and validated end-to-end. Output format may still change at
 a minor bump until 1.0. See [`CHANGELOG.md`](CHANGELOG.md) for history and
-[`IMPROVEMENTS.md`](IMPROVEMENTS.md) for the audit/backlog.
+[`IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) for the audit/backlog.
 
 ## What it does
 
@@ -162,7 +162,7 @@ Lint (install the dev extra first: `.venv/bin/pip install -e ".[dev]"`):
 
 ## Docs
 
-- [`PROJECT_PLAN.md`](PROJECT_PLAN.md) – design, dependency policy, milestones.
-- [`H3_Prompting_Docs/`](H3_Prompting_Docs/) – official Minimax H3 prompting guides.
+- [`PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) – design, dependency policy, milestones.
+- [`docs/H3_Prompting_Docs/`](docs/H3_Prompting_Docs/) – official Minimax H3 prompting guides.
 - [`CHANGELOG.md`](CHANGELOG.md) – release history (Keep a Changelog + SemVer).
-- [`IMPROVEMENTS.md`](IMPROVEMENTS.md) – code audit, fixes, and backlog.
+- [`IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) – code audit, fixes, and backlog.

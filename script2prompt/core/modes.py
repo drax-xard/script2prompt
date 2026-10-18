@@ -1,7 +1,7 @@
 """H3 modes: instruction lines + section schemas per mode.
 
 v1 mode is per-project (``chunk.mode_override`` is a v2 hook).
-Exact wording comes from ``H3_Prompting_Docs/`` (official Minimax guides).
+Exact wording comes from ``docs/H3_Prompting_Docs/`` (official Minimax guides).
 """
 from __future__ import annotations
 

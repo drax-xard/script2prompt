@@ -1,6 +1,6 @@
 """Per-mode system prompts for the LLM rewrite (Milestone 4).
 
-Authoritative sources: ``H3_Prompting_Docs/`` (official Minimax guides) and the
+Authoritative sources: ``docs/H3_Prompting_Docs/`` (official Minimax guides) and the
 two ``Example_*_Prompt.txt`` files. Where the real examples and the guides
 differ, the examples win: field labels sit on their own lines, the style is a
 standalone opening sentence before ``[Shot 1]``, and dialogue is
