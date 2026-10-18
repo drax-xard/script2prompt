@@ -12,7 +12,9 @@ import argparse
 
 from .core import config as config_mod
 from .core import llm, pipeline
+from .core.characters import build_bible
 from .core.modes import MODES
+from .core.scenes import split as split_scenes
 from .parsers import parse_file
 
 
@@ -40,9 +42,17 @@ def main(argv: list[str] | None = None) -> int:
     shots = args.shots if args.shots is not None else cfg["project"]["shots_max"]
 
     elements = parse_file(args.script)
+    bible = None
+    rewrite = None
+    if args.llm:
+        # One per-project context call, then a per-chunk rewriter that reuses it.
+        bible = build_bible(split_scenes(elements))
+        rewrite = llm.Rewriter(
+            elements, bible, context=cfg["llm"].get("context", True), style=style
+        )
     project = pipeline.run(
         elements, mode=mode, duration=duration, shots_max=shots, style=style,
-        rewrite=llm.rewrite if args.llm else None,
+        bible=bible, rewrite=rewrite,
     )
     written = pipeline.write_pack(project, args.out, clean=args.clean)
 

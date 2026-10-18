@@ -19,6 +19,9 @@ DEFAULTS = {
         "max_tokens": 2048,
         "timeout": 120,
         "retries": 2,
+        "fix_attempts": 1,
+        "context": True,
+        "disable_thinking": True,
     },
 }
 

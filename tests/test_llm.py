@@ -89,6 +89,57 @@ class TestMessages(unittest.TestCase):
         self.assertEqual(seen["msgs"][0]["role"], "system")
 
 
+class TestSanitize(unittest.TestCase):
+    def test_inlined_field_label_moves_to_own_line(self) -> None:
+        out = llm.sanitize("integrated_multimodal_description: Live-action, cinematic.")
+        self.assertEqual(out, "integrated_multimodal_description:\nLive-action, cinematic.")
+
+    def test_language_tag_after_close_moves_inside(self) -> None:
+        out = llm.sanitize("A (S1) says <d>Hello there.</d> (English).")
+        self.assertEqual(out, "A (S1) says <d>[English]Hello there.</d>.")
+
+    def test_missing_language_tag_defaults_to_english(self) -> None:
+        out = llm.sanitize("A (S1) says <d>Hello.</d>")
+        self.assertEqual(out, "A (S1) says <d>[English]Hello.</d>")
+
+    def test_existing_language_tag_is_kept(self) -> None:
+        out = llm.sanitize("A (S1) says <d>[French]Bonjour.</d>")
+        self.assertEqual(out, "A (S1) says <d>[French]Bonjour.</d>")
+
+    def test_dialogue_after_music_moves_into_description(self) -> None:
+        prompt = (
+            "integrated_multimodal_description:\nA shot.\n"
+            "overall_soundscape:\nHum.\n"
+            "non_diegetic_music:\nCello.\n"
+            "A (S1) says <d>Line.</d>"
+        )
+        out = llm.sanitize(prompt)
+        desc, _, rest = out.partition("overall_soundscape:")
+        self.assertIn("<d>[English]Line.</d>", desc)
+        self.assertNotIn("Line.", rest)
+
+    def test_long_soundscape_is_capped(self) -> None:
+        prompt = (
+            "integrated_multimodal_description:\nA shot.\n"
+            "overall_soundscape:\nOne. Two. Three. Four. Five.\n"
+            "non_diegetic_music:\nN/A"
+        )
+        out = llm.sanitize(prompt)
+        body = out.split("overall_soundscape:\n")[1].split("\nnon_diegetic_music:")[0]
+        self.assertEqual(body, "One. Two. Three. Four.")
+
+    def test_sanitized_prompt_validates(self) -> None:
+        from script2prompt.core import validator
+
+        prompt = llm.sanitize(
+            "integrated_multimodal_description: Live-action, cinematic. [Shot 1] A shot at night.\n"
+            "overall_soundscape: Hum. Buzz. Click.\n"
+            "non_diegetic_music: N/A\n"
+            "A (S1) says <d>Line.</d> (English)."
+        )
+        self.assertEqual(validator.validate(prompt, mode="T2VA", duration=8.0), [])
+
+
 class TestBuilderLLM(unittest.TestCase):
     def test_llm_output_is_primary(self) -> None:
         bible, chunks = pipeline()
@@ -202,6 +253,17 @@ class TestEndpoint(unittest.TestCase):
         self.assertEqual(self.server.received["model"], "test-model")
         self.assertEqual(self.server.received["messages"][0]["content"], "hi")
         self.assertEqual(self.server.received["max_tokens"], 2048)
+        self.assertEqual(
+            self.server.received["chat_template_kwargs"], {"enable_thinking": False}
+        )
+
+    def test_chat_omits_thinking_flag_when_disabled(self) -> None:
+        cfg = {"llm": {"base_url": self.url, "model": "m", "temperature": 0.7,
+                       "max_tokens": 64, "timeout": 5, "retries": 0,
+                       "disable_thinking": False}}
+        with mock.patch("script2prompt.core.llm.load", return_value=cfg):
+            llm.chat([{"role": "user", "content": "hi"}])
+        self.assertNotIn("chat_template_kwargs", self.server.received)
 
     def test_build_with_live_rewrite(self) -> None:
         bible, chunks = pipeline()

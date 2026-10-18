@@ -13,7 +13,15 @@ from __future__ import annotations
 from . import fallback
 from .characters import Character, title
 from .ref_manifest import propose
-from .render import clean, soundscape_sentences
+from .render import (
+    camera_sentence,
+    clean,
+    cut_lead,
+    music_line,
+    scene_phrase,
+    seed_key,
+    soundscape_sentences,
+)
 
 
 def _definitions(manifest: dict) -> list[str]:
@@ -88,19 +96,25 @@ def build(chunk: dict, bible: list[Character] = (), manifest: dict | None = None
     shots = chunk.get("shots", [])
     subject_labels = {s["name"]: s["label"] for s in manifest["subjects"] if s["kind"] == "character"}
 
+    context = chunk.get("context", "")
     mentioned: set[str] = set()
     rendered = []
+    used_cameras: set[str] = set()
     for i, shot in enumerate(shots):
+        has_dialogue = any(el.kind == "dialogue" for el in shot["elements"])
+        has_action = any(el.kind == "action" for el in shot["elements"])
+        seed = seed_key(context, shot["elements"])
+        camera = camera_sentence(
+            i, has_dialogue=has_dialogue, has_action=has_action, seed=seed,
+            avoid=used_cameras,
+        )
+        used_cameras.add(camera)
         if i == 0:
-            opening = (
-                "The scene opens on the scripted location with the referenced "
-                "subjects in place. The camera holds a static shot."
-            )
+            phrase = scene_phrase(context)
+            where = f" in {phrase}" if phrase else ""
+            opening = f"The scene opens{where} with the referenced subjects in place. {camera}"
         else:
-            opening = (
-                f"[Shot {i + 1}] At {shot['start']}, the camera cuts to a new "
-                "angle on the ongoing action. The camera holds a static shot."
-            )
+            opening = f"[Shot {i + 1}] At {shot['start']}, {cut_lead(i, seed)}. {camera}"
         rendered.append(fallback._shot_text(shot["elements"], speakers, mentioned, opening, subject_labels))
     style = clean(style) or "Live-action, cinematic"
     style_line = f"The target video uses a {style[:1].lower() + style[1:]} style, matching the scripted scene."
@@ -116,6 +130,6 @@ def build(chunk: dict, bible: list[Character] = (), manifest: dict | None = None
         ("retention_analysis:", _retention(manifest)),
         ("detailed_description:", [description]),
         ("overall_soundscape:", [soundscape]),
-        ("non_diegetic_music:", ["N/A"]),
+        ("non_diegetic_music:", [music_line(chunk)]),
     ]
     return "\n\n".join(f"{label}\n" + "\n".join(lines) for label, lines in sections)

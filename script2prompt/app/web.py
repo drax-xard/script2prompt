@@ -80,9 +80,14 @@ def main() -> None:
         if project is None or st.session_state.get("fingerprint") != fingerprint:
             return
     else:
+        rewrite = (
+            llm.Rewriter(elements, bible, context=cfg["llm"].get("context", True), style=style)
+            if use_llm
+            else None
+        )
         project = pipeline.run(
             elements, mode=mode, duration=duration, shots_max=shots_max,
-            style=style, bible=bible, rewrite=llm.rewrite if use_llm else None,
+            style=style, bible=bible, rewrite=rewrite,
         )
         st.session_state["project"] = project
         st.session_state["fingerprint"] = fingerprint

@@ -20,22 +20,51 @@ Hard rules:
   sentence such as "Live-action, cinematic." Then write [Shot 1] with NO
   timestamp. Later shots start with "[Shot N] At MM:SS.mmm, ..." using strictly
   increasing cut times inside the stated duration. Use at most 3 shots.
+- Turn the scripted beats into concrete cinematic prose: name the framing
+  (close-up, wide shot, over-the-shoulder), the subjects' appearance and
+  position, and their physical action. Expand what the scene implies but stays
+  consistent with the script; never add new plot, characters, or lines.
+- Describe the setting as natural prose ("a newsroom at night"), never the raw
+  slugline. Do not write scene numbers, transitions such as "CUT TO:", or
+  "INT./EXT." inside the body.
 - Give every shot a camera expression written as natural prose (motion type,
   optionally amplitude and speed), e.g. "The camera pushes in with small
-  amplitude at slow speed ..." or "The camera holds a static shot ...".
+  amplitude at slow speed ..." or "The camera holds a static shot ...". Vary the
+  movement between shots; do not repeat the same motion in every shot.
 - Speakers use stable IDs: S1 is the first voice, S2 the next, and characters
   who never vocalize get no ID. On first appearance add a short identifying
-  phrase before the ID. Keep the delivery and ID outside <d>; keep the language
-  tag and the verbatim words inside.
+  phrase taken from the script (age, role, or look). Keep the delivery and ID
+  outside <d>; keep the language tag and the verbatim words inside.
   Plain form: Name (S1) says <d>[English]words</d>.
 - Voiceover uses the exact phrase "says in an off-screen voiceover" and states
   that the on-screen character's lips remain completely closed.
-- overall_soundscape: 1-4 sentences of ambient, physical-action, and non-verbal
-  sound only. It must NEVER contain dialogue. Use N/A only for total silence.
-- non_diegetic_music: 1-3 sentences on music only the audience hears
-  (instrumentation, tempo, dynamics, change over time). Use N/A when there is
-  none.
-- Keep the whole prompt within 7000 characters."""
+- Preserve the script's tone (genre, pace, mood); match it in word choice and
+  camera energy.
+- overall_soundscape: 1-4 sentences describing actual sounds only — ambience,
+  physical-action sounds, and non-verbal human sounds. Describe sound, do not
+  restate the action, name a character, or repeat the visuals. It must NEVER
+  contain dialogue. Use N/A only for total silence.
+- non_diegetic_music: 1-3 sentences on audience-only music (instrumentation,
+  tempo, dynamics, change over time). Use N/A unless the script explicitly
+  features such a score; diegetic music belongs in the main field instead.
+- Keep the whole prompt within 7000 characters.
+
+Exact output shape (each field label alone on its own line, nothing after the
+colon on the label line):
+
+integrated_multimodal_description:
+<style sentence>
+[Shot 1] ...
+overall_soundscape:
+<1-4 sound sentences>
+non_diegetic_music:
+<1-3 music sentences or N/A>
+
+Dialogue must always read "Name (S1) says <d>[English]words</d>." — the language
+tag goes INSIDE the <d> tags; never write the language after </d>. Every spoken
+line belongs inside the shot narration of integrated_multimodal_description;
+never place dialogue after overall_soundscape/non_diegetic_music or in a
+separate list."""
 
 _T2VA = _COMMON + """
 
@@ -91,7 +120,11 @@ Hard rules:
   speaker IDs such as (S1) in this section.
 - detailed_description: open with a style sentence, then [Shot 1] with NO
   timestamp, then later shots as "[Shot N] At MM:SS.mmm, ...". Refer to subjects
-  by their <Subject N> label. Use at most 3 shots.
+  by their <Subject N> label. Use at most 3 shots. This is the main body: make
+  it concrete and shot-by-shot (composition, subject appearance and position,
+  environment and lighting, actions, camera movement), roughly 350-500 words.
+  Describe the setting naturally; never emit the raw slugline or transitions.
+  Vary camera motion between shots rather than repeating one movement.
 - Dialogue keeps the script's exact words and punctuation inside <d>...</d> with
   the language tag, e.g. Name (S1) says <d>[English]words</d>. Keep delivery and
   speaker IDs outside <d>.
@@ -99,7 +132,11 @@ Hard rules:
   only; it must NEVER contain dialogue. Use N/A only for total silence.
 - non_diegetic_music: 1-3 sentences in viewer-only terms, or N/A.
 - Use only labels you defined, and keep the whole prompt within 7000
-  characters."""
+  characters.
+
+Each section label sits alone on its own line, in the order above. Dialogue must
+always read "Name (S1) says <d>[English]words</d>." — the language tag goes
+INSIDE the <d> tags; never write the language after </d>."""
 
 SYSTEM_PROMPTS: dict[str, str] = {
     "T2VA": _T2VA,

@@ -15,7 +15,16 @@ from script2prompt.parsers.base import Element
 from .characters import Character, split_joint, title
 from .chunker import split_sentences
 from .modes import instruction_line
-from .render import clean, finish, soundscape_sentences
+from .render import (
+    camera_sentence,
+    clean,
+    cut_lead,
+    finish,
+    music_line,
+    scene_phrase,
+    seed_key,
+    soundscape_sentences,
+)
 
 
 def _is_voiceover(extension: str, delivery: str) -> bool:
@@ -101,6 +110,23 @@ def _render_dialogue(words: str, head: str, voiceover: bool, mark: str,
     return line
 
 
+def _strip_intro_traits(text: str, speakers: dict[str, Character]) -> str:
+    """Drop a ``(traits)`` parenthetical that merely repeats the speaker's bio.
+
+    ``ELENA (40s, sharp editor) stands…`` reads redundantly once the speaker head
+    already carries her description; the parenthetical is removed only when it
+    matches the bible entry verbatim.
+    """
+    for name, char in speakers.items():
+        if not char or not char.description:
+            continue
+        pattern = re.compile(
+            re.escape(name) + r"\s*\(" + re.escape(char.description) + r"\)", re.IGNORECASE
+        )
+        text = pattern.sub(name, text)
+    return text
+
+
 def _shot_text(elements: list[Element], speakers: dict[str, Character],
                mentioned: set[str], opening: str,
                subject_labels: dict[str, str] | None = None) -> str:
@@ -131,32 +157,46 @@ def _shot_text(elements: list[Element], speakers: dict[str, Character],
             )
             delivery = ""
         elif el.kind == "action":
-            parts.extend(finish(s) for s in split_sentences(el.text))
+            parts.extend(finish(s) for s in split_sentences(_strip_intro_traits(el.text, speakers)))
     return " ".join(parts)
 
 
-def _first_opening(mode: str, context: str) -> str:
+def _first_opening(mode: str, context: str, has_dialogue: bool, has_action: bool,
+                   seed: str = "", used_cameras: set[str] | None = None) -> str:
     """Opening sentences for [Shot 1] per mode (guide §3 structures)."""
-    base = "A medium-wide shot frames the scene."
+    phrase = scene_phrase(context)
+    base = (
+        f"A medium-wide shot establishes {phrase}."
+        if phrase
+        else "A medium-wide shot frames the scene."
+    )
+    camera = camera_sentence(
+        0, has_dialogue=has_dialogue, has_action=has_action, seed=seed,
+        avoid=used_cameras or frozenset(),
+    )
+    if used_cameras is not None:
+        used_cameras.add(camera)
     if mode == "I2VA":
-        anchor = "The subject shown in <Picture 1> holds the composition, preserving appearance, clothing, and positioning"
-        anchor += f" in {context}" if context else ""
-        anchor += "."
-        return f"{base} {anchor} The camera pushes in with small amplitude at slow speed."
+        anchor = (
+            "The subject shown in <Picture 1> holds the composition, preserving "
+            "appearance, clothing, and positioning"
+        )
+        anchor += f" in {phrase}" if phrase else ""
+        return f"{base} {anchor}. {camera}"
     if mode == "FL2VA":
+        static = "The camera holds a static shot."
+        if used_cameras is not None:
+            used_cameras.add(static)
         return (
             f"{base} The subject begins in the position and framing established by "
-            "Picture 1. The camera holds a static shot."
+            f"Picture 1. {static}"
         )
     if mode == "L2VA":
         return (
             f"{base} The scene opens on a plausible preceding state, before the "
-            "moment shown in <Picture 1>. The camera pushes in with small amplitude at slow speed."
+            f"moment shown in <Picture 1>. {camera}"
         )
-    opening = base
-    if context:
-        opening += f" The scene takes place at {context}."
-    return opening + " The camera pushes in with small amplitude at slow speed."
+    return f"{base} {camera}"
 
 
 def _closing(mode: str) -> str:
@@ -188,16 +228,22 @@ def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
     duration = chunk.get("duration", 8.0)
     mentioned: set[str] = set()
     rendered: list[str] = []
+    used_cameras: set[str] = set()
     for i, shot in enumerate(shots):
+        has_dialogue = any(el.kind == "dialogue" for el in shot["elements"])
+        has_action = any(el.kind == "action" for el in shot["elements"])
+        seed = seed_key(context, shot["elements"])
         if i == 0:
             # Style lives in its own opening sentence (per the real example),
             # not inline in [Shot 1].
-            opening = _first_opening(mode, context)
+            opening = _first_opening(mode, context, has_dialogue, has_action, seed, used_cameras)
         else:
-            opening = (
-                f"[Shot {i + 1}] At {shot['start']}, the camera cuts to a new "
-                "angle on the ongoing action. The camera holds a static shot."
+            camera = camera_sentence(
+                i, has_dialogue=has_dialogue, has_action=has_action, seed=seed,
+                avoid=used_cameras,
             )
+            used_cameras.add(camera)
+            opening = f"[Shot {i + 1}] At {shot['start']}, {cut_lead(i, seed)}. {camera}"
         body = _shot_text(shot["elements"], speakers, mentioned, opening)
         closing = _closing(mode)
         if closing and i == len(shots) - 1:
@@ -209,11 +255,12 @@ def build(chunk: dict, bible: list[Character] = (), mode: str = "T2VA",
         description += f"\n{extra}"
 
     soundscape = soundscape_sentences(chunk)
+    music = music_line(chunk)
 
     fields = (
         f"integrated_multimodal_description:\n{description}\n\n"
         f"overall_soundscape:\n{soundscape}\n\n"
-        "non_diegetic_music:\nN/A"
+        f"non_diegetic_music:\n{music}"
     )
     # Field labels on their own lines, matching Example_*_Prompt.txt layout.
     instruction = instruction_line(mode, final_shot=max(len(shots), 1), duration=duration)

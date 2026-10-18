@@ -14,6 +14,43 @@ Versioning practices:
 - Each release gets a dated section below with `Added / Changed / Fixed / Removed` entries
   and (once published) a version tag `vX.Y.Z` plus a GitHub release.
 
+## [Unreleased]
+
+Generated-prompt quality pass across the deterministic templates and the LLM
+rewrite, verified end-to-end against a local reasoning-model endpoint.
+
+### Added
+- `core/render.py`: shared prompt primitives — `scene_phrase`/`scene_noun`
+  (naturalized, slugline-free setting), per-shot `seed_key`, `camera_sentence`
+  with a used-camera set for variety, `soundscape_sentences` (real audible cues
+  from the script's action), and `music_line` (`N/A` unless a score is named).
+- `core/characters.py`: capture appositive intros (`DANI, a nervous junior
+  reporter, ...`) as character descriptions.
+- `core/llm.py`: `project_context` + `Rewriter` (one cached per-project context
+  call), a `context=` parameter threaded through `messages`/`rewrite`, a
+  validate→repair loop (`llm.fix_attempts`), and `sanitize` to repair the
+  format deviations small models make (inlined field labels, mis-placed dialogue
+  language tags, dialogue stranded after `non_diegetic_music`, over-long audio
+  fields).
+- `core/llm.py`: `llm.disable_thinking` (default `true`) sends
+  `chat_template_kwargs: {enable_thinking: false}` so reasoning models (Qwen3
+  etc. via koboldcpp) don't spend the whole token budget on a chain-of-thought
+  preamble.
+- `tests`: `test_llm.py` sanitizer/thinking-toggle coverage and
+  `test_quality.py::TestGeneratedPromptQuality` (no raw sluglines, no timestamp
+  on `[Shot 1]`, camera variety, dialogue-free soundscape, `N/A` default music).
+
+### Changed
+- `core/prompts.py`: stronger `_COMMON`/`_R2V` system prompts — naturalized
+  setting, no raw slugline/transitions, camera variety, soundscape = sounds
+  only, music `N/A` default, explicit output skeleton and dialogue format.
+- `core/fallback.py`, `core/r2v.py`: build shots from the new render primitives
+  (per-shot seeds, varied cameras, derived soundscape, music rule).
+- `core/config.py` + `config.toml`: new `llm.fix_attempts`, `llm.context`,
+  `llm.disable_thinking` options.
+- `__main__.py`, `app/web.py`: construct `llm.Rewriter` (with character bible +
+  context) when the LLM path is enabled.
+
 ## [0.11.1] - 2026-10-17
 
 Real-screenplay hardening: ran the full *Big Fish* feature (Fountain/FDX/PDF)

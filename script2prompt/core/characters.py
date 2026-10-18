@@ -18,6 +18,11 @@ _ACTION_INTRO = re.compile(
     r"\b([A-Z][A-Z'\-]+(?:(?:\s+AND\s+|\s*&\s*|\s+)[A-Z][A-Z'\-]+){0,3})\s*\(([^)]*)\)"
 )
 _TRAITS_LIKE = re.compile(r"[\d,]")
+# Alternate intro form: "DANI, a nervous junior reporter, ..." (no parenthetical).
+# Guarded by a comma + article so ordinary comma clauses are ignored.
+_APPOSITIVE_INTRO = re.compile(
+    r"\b([A-Z][A-Z'\-]+)\s*,\s*(?:a|an|the)\s+([A-Za-z][^,.;]{2,60}?)(?=,|\.|;|$)"
+)
 # A multi-word caps name must not swallow a connector word ("ELENA AND").
 _CAPS_NAME = re.compile(
     r"\b([A-Z](?:['\-]?[A-Z])+(?:\s+(?!(?:AND|OR|THE|AN|A)\b)[A-Z](?:['\-]?[A-Z])+)?)\b"
@@ -123,6 +128,14 @@ def build_bible(scenes: list[dict]) -> list[Character]:
                             traits[name] = m.group(2).strip()
                         backed.add(name)
                         seen_note(name)
+                for m in _APPOSITIVE_INTRO.finditer(text):
+                    name = m.group(1).upper()
+                    desc = re.sub(r"\s+", " ", m.group(2)).strip()
+                    if name in _NOISE or name in traits or len(desc.split()) > 8:
+                        continue
+                    traits[name] = desc
+                    backed.add(name)
+                    seen_note(name)
                 for found in _CAPS_NAME.findall(text):
                     candidate = re.sub(r"\s+", " ", found).strip().upper()
                     for name in split_joint(candidate) or [candidate]:

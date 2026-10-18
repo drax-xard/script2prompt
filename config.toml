@@ -16,3 +16,6 @@ temperature = 0.3
 max_tokens = 2048   # completion cap per chunk
 timeout = 120       # per-request seconds
 retries = 2         # transient-failure retries (5xx / network / timeout)
+fix_attempts = 1    # validator-repair turns per chunk after a bad first reply
+context = true      # one per-project context call (tone / palette / voice notes)
+disable_thinking = true  # send chat_template_kwargs enable_thinking=false (reasoning models)
