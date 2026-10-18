@@ -68,6 +68,8 @@ class TestTitleCasing(unittest.TestCase):
         self.assertEqual(title("MARY-JANE"), "Mary-Jane")
         self.assertEqual(title("O'BRIEN"), "O'Brien")
         self.assertEqual(title("MARY JANE"), "Mary Jane")
+        self.assertEqual(title("WILL'S DATE"), "Will's Date")
+        self.assertEqual(title("JAMES'S"), "James's")
 
     def test_alphanumeric_designator_preserved(self) -> None:
         self.assertEqual(title("C3PO"), "C3PO")

@@ -72,7 +72,12 @@ def title(name: str) -> str:
         after = name[end] if end < len(name) else ""
         if before.isdigit() or after.isdigit():
             return match.group(0)
-        return match.group(0).capitalize()
+        token = match.group(0)
+        # A lone "s" after an apostrophe is possessive, not a surname capital
+        # ("WILL'S DATE" -> "Will's Date", but "O'BRIEN" -> "O'Brien").
+        if before == "'" and token.lower() == "s" and not after.isalpha():
+            return token.lower()
+        return token.capitalize()
 
     return re.sub(r"[A-Za-z]+", _cap, name)
 

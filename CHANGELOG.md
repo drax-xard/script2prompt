@@ -51,6 +51,10 @@ rewrite, verified end-to-end against a local reasoning-model endpoint.
 - `__main__.py`, `app/web.py`: construct `llm.Rewriter` (with character bible +
   context) when the LLM path is enabled.
 
+### Fixed
+- `core/characters.py`: possessive cue names keep the apostrophe lowercase
+  (`WILL'S DATE` -> `Will's Date`, not `Will'S Date`).
+
 ## [0.11.1] - 2026-10-17
 
 Real-screenplay hardening: ran the full *Big Fish* feature (Fountain/FDX/PDF)
