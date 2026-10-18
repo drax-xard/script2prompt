@@ -14,7 +14,7 @@ Versioning practices:
 - Each release gets a dated section below with `Added / Changed / Fixed / Removed` entries
   and (once published) a version tag `vX.Y.Z` plus a GitHub release.
 
-## [Unreleased]
+## [0.12.0] - 2026-10-18
 
 Generated-prompt quality pass across the deterministic templates and the LLM
 rewrite, verified end-to-end against a local reasoning-model endpoint.

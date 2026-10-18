@@ -1,10 +1,14 @@
+<p align="center">
+  <img src="assets/S2P_header.png" alt="Script2Prompt">
+</p>
+
 # Script2Prompt
 
 Translate movie scripts (screenplays) into Minimax H3 video prompts. Point it
 at a screenplay and it produces a ready-to-use prompt pack: one validated H3
 prompt per 5–10s chunk, with a consistent character bible.
 
-**Status: `0.11.1` (pre-1.0).** All core features and all five H3 modes are
+**Status: `0.12.0` (pre-1.0).** All core features and all five H3 modes are
 implemented, tested, and validated end-to-end. Output format may still change at
 a minor bump until 1.0. See [`CHANGELOG.md`](CHANGELOG.md) for history and
 [`IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) for the audit/backlog.
